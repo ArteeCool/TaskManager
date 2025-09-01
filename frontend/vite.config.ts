@@ -6,7 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
     plugins: [react(), tailwindcss()],
     server: {
-        allowedHosts: ["arteecool.com.ua"],
+        allowedHosts: ["arteecool.com.ua", "https://www.arteecool.com.ua"],
     },
     resolve: {
         alias: {

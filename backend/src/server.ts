@@ -50,7 +50,7 @@ app.use("/images", express.static(path.join(process.cwd(), "images")));
 app.use("/api/auth/", authRouter);
 app.use("/api/profile/", profileRouter);
 
-app.listen(PORT, async () => {
+app.listen(PORT as number, "0.0.0.0", async () => {
     console.log(`Server started on port ${PORT}`);
     await dbInit();
     await connectDB();
