@@ -4,11 +4,11 @@ let client: pg.Pool | null = null;
 
 export const dbInit = async () => {
     const dbConnectionData = {
-        host: process.env.DB_HOST,
-        port: Number(process.env.DB_PORT),
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME,
+        host: process.env.POSTGRES_HOST || "localhost",
+        port: Number(process.env.POSTGRES_PORT) || 5432,
+        user: process.env.POSTGRES_USER,
+        password: process.env.POSTGRES_PASSWORD,
+        database: process.env.POSTGRES_DB,
     };
 
     client = new pg.Pool(dbConnectionData);
@@ -17,7 +17,7 @@ export const dbInit = async () => {
 export const connectDB = async () => {
     if (client) {
         try {
-            client.connect();
+            await client.connect();
             console.log("Database connected");
         } catch (error) {
             console.log(error);
@@ -28,7 +28,7 @@ export const connectDB = async () => {
 export const disconnectDB = async () => {
     if (client) {
         try {
-            client.end();
+            await client.end();
             console.log("Database disconnected");
         } catch (error) {
             console.log(error);
