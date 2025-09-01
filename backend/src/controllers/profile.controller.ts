@@ -32,7 +32,7 @@ export const updateProfile = async (req: MutatedRequest, res: Response) => {
     if (email) fieldsMap.email = email;
 
     if (req.file) {
-        fieldsMap.avatarurl = `https://arteecool.com.ua/images/${req.file.filename}`;
+        fieldsMap.avatarurl = `https://arteecool.com.ua/api/images/${req.file.filename}`;
     }
 
     if (currentPassword || newPassword || confirmPassword) {

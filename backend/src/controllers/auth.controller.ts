@@ -28,7 +28,7 @@ export const signUp = async (req: Request, res: Response) => {
 
         const roles = ["user"];
 
-        const avatarurl = "https://arteecool.com.ua/images/default.png";
+        const avatarurl = "https://arteecool.com.ua/api/images/default.png";
 
         await queryDB(
             "INSERT INTO users (fullname, email, password, avatarurl, roles, confirmation_key) VALUES ($1, $2, $3, $4, $5, $6);",

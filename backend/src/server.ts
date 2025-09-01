@@ -45,7 +45,7 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-app.use("/images", express.static(path.join(process.cwd(), "images")));
+app.use("/api/images", express.static(path.join(process.cwd(), "images")));
 
 app.use("/api/auth/", authRouter);
 app.use("/api/profile/", profileRouter);
