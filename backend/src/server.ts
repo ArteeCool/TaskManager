@@ -30,13 +30,7 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(
     cors({
-        origin: [
-            "https://arteecool.com.ua",
-            "https://26.160.187.155",
-            "https://localhost",
-            "http://localhost",
-            "http://localhost:5173",
-        ],
+        origin: ["https://arteecool.com.ua", "http://localhost:5173"],
         credentials: true,
     })
 );
