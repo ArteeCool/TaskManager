@@ -4,7 +4,8 @@
     "main": "src/server.ts",
     "scripts": {
         "dev": "nodemon src/server.ts",
-        "start": "npx tsx src/server.ts"
+        "start": "npx tsx src/server.ts",
+        "docker": "docker-compose up -d --build"
     },
     "keywords": [],
     "author": "",

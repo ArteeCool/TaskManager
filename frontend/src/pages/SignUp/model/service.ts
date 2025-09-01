@@ -9,7 +9,7 @@ interface SignUpResponse {
 export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
     try {
         const res = await axios.post<SignUpResponse>(
-            "https://localhost:5678/api/auth/sign-up",
+            "http://localhost:5678/api/auth/sign-up",
             data,
             {
                 withCredentials: true,

@@ -9,7 +9,7 @@ interface LoginResponse {
 export const login = async (data: LogInFormData): Promise<LoginResponse> => {
     try {
         const res = await axios.post<LoginResponse>(
-            "https://localhost:5678/api/auth/log-in",
+            "http://localhost:5678/api/auth/log-in",
             data,
             {
                 withCredentials: true,
