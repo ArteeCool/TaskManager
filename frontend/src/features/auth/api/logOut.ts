@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const logOut = async () => {
     const response = await axios.get(
-        "http://localhost:5678/api/auth/log-out",
+        "https://arteecool.com.ua/api/auth/log-out",
         { withCredentials: true }
     );
     return response.data;

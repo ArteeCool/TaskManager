@@ -5,7 +5,7 @@ export const useUpdateUser = () => {
     return useMutation({
         mutationFn: async (data: FormData) => {
             const response = await axios.put(
-                "http://localhost:5678/api/profile/update",
+                "https://arteecool.com.ua/api/profile/update",
                 data,
                 {
                     withCredentials: true,

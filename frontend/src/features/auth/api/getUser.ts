@@ -3,7 +3,7 @@ import axios from "axios";
 
 export const getCurrentUser = async (): Promise<User> => {
     const response = await axios.get<User>(
-        "http://localhost:5678/api/auth/me",
+        "https://arteecool.com.ua/api/auth/me",
         {
             withCredentials: true,
         }

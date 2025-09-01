@@ -6,7 +6,7 @@ export const usePublicProfile = (id: number) => {
         queryKey: ["profile"],
         queryFn: async () => {
             const result = await axios.get(
-                `http://localhost:5678/api/profile/get-public/${id}`
+                `https://arteecool.com.ua/api/profile/get-public/${id}`
             );
             return result.data;
         },
