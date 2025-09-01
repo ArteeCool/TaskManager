@@ -1,0 +1,123 @@
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { queryDB } from "../database/db.ts";
+import { type Request, type Response } from "express";
+import { generateRandomString } from "../utils/index.ts";
+import { type MutatedRequest } from "../types/auth.types.ts";
+
+export const signUp = async (req: Request, res: Response) => {
+    const { fullname, email, password } = req.body;
+
+    if (!fullname || !email || !password) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    try {
+        const existingUser = await queryDB(
+            "SELECT * FROM users WHERE email = $1;",
+            [email]
+        );
+
+        if (existingUser && existingUser.rows.length > 0) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const confirmationKey = generateRandomString(64);
+
+        const roles = ["user"];
+
+        const avatarurl = "https://localhost:5678/images/default.png";
+
+        await queryDB(
+            "INSERT INTO users (fullname, email, password, avatarurl, roles, confirmation_key) VALUES ($1, $2, $3, $4, $5, $6);",
+            [fullname, email, hashedPassword, avatarurl, roles, confirmationKey]
+        );
+
+        res.status(201).json({ message: "User created successfully" });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Internal server error",
+            error: error,
+        });
+    }
+};
+
+export const logIn = async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    try {
+        const user = await queryDB("SELECT * FROM users WHERE email = $1;", [
+            email,
+        ]);
+
+        if (!user || user.rows.length === 0) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        const { password: hashedPassword, id } = user.rows[0];
+
+        const isPasswordValid = await bcrypt.compare(password, hashedPassword);
+
+        if (!isPasswordValid) {
+            return res.status(400).json({ message: "Invalid password" });
+        }
+
+        const token = jwt.sign({ id }, process.env.JWT_SECRET as string, {
+            expiresIn: "1d",
+        });
+
+        res.cookie("token", token, {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: true,
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
+        res.status(200).json({ message: "User logged in successfully" });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Internal server error",
+            error: error,
+        });
+    }
+};
+
+export const logOut = async (req: MutatedRequest, res: Response) => {
+    res.clearCookie("token");
+    res.status(200).json({ message: "User logged out successfully" });
+};
+
+export const getMe = async (req: MutatedRequest, res: Response) => {
+    const userId = req.user.id;
+
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+        const user = await queryDB(
+            "SELECT id, fullname, email, avatarurl, roles FROM users WHERE id = $1;",
+            [userId]
+        );
+
+        if (!user || user.rows.length === 0) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        res.status(200).json(user.rows[0]);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Internal server error",
+            error: error,
+        });
+    }
+};

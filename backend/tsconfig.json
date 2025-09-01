@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "target": "ES2020", // сучасний JS для Node 14+
+        "module": "CommonJS", // стандарт для Node
+        "outDir": "dist", // куди компілювати JS
+        "rootDir": "src", // коренева папка TS
+        "strict": true, // включає всі строгі перевірки
+        "esModuleInterop": true, // щоб імпорти CommonJS працювали з import
+        "forceConsistentCasingInFileNames": true, // чутливість до регістру
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "skipLibCheck": true, // ігнорування типів бібліотек
+        "resolveJsonModule": true, // імпорти JSON
+        "noImplicitAny": true, // заборона any без явного типу
+        "noFallthroughCasesInSwitch": true, // без пропусків у switch
+        "sourceMap": true // для дебагу з TS файлами
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+}
