@@ -4,7 +4,7 @@ let client: pg.Pool | null = null;
 
 export const dbInit = async () => {
     const dbConnectionData = {
-        host: process.env.POSTGRES_HOST || "localhost",
+        host: process.env.POSTGRES_HOST,
         port: Number(process.env.POSTGRES_PORT) || 5432,
         user: process.env.POSTGRES_USER,
         password: process.env.POSTGRES_PASSWORD,

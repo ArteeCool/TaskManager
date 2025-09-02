@@ -9,7 +9,7 @@ interface LoginResponse {
 export const login = async (data: LogInFormData): Promise<LoginResponse> => {
     try {
         const res = await axios.post<LoginResponse>(
-            "https://arteecool.com.ua/api/auth/log-in",
+            `${import.meta.env.VITE_API_URL}/api/auth/log-in`,
             data,
             {
                 withCredentials: true,

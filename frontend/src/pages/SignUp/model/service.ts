@@ -9,7 +9,7 @@ interface SignUpResponse {
 export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
     try {
         const res = await axios.post<SignUpResponse>(
-            "https://arteecool.com.ua/api/auth/sign-up",
+            `${import.meta.env.VITE_API_URL}/api/auth/sign-up`,
             data,
             {
                 withCredentials: true,

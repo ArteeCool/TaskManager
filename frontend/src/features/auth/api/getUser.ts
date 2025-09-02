@@ -3,7 +3,7 @@ import axios from "axios";
 
 export const getCurrentUser = async (): Promise<User> => {
     const response = await axios.get<User>(
-        "https://arteecool.com.ua/api/auth/me",
+        `${import.meta.env.VITE_API_URL}/api/auth/me`,
         {
             withCredentials: true,
         }
