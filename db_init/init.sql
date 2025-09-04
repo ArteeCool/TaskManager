@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS users;
-
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY NOT NULL,
     fullname TEXT NOT NULL,
@@ -9,3 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     roles TEXT[] NOT NULL,
     confirmation_key TEXT UNIQUE
 );
+
+CREATE TABLE IF NOT EXISTS boards (
+    id SERIAL PRIMARY KEY NOT NULL,
+	name TEXT NOT NULL
+)

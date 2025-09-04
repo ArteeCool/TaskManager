@@ -6,7 +6,7 @@ export const usePublicProfile = (id: number) => {
         queryKey: ["profile"],
         queryFn: async () => {
             const result = await axios.get(
-                `${import.meta.env.VITE_API_URL}/api/profile/get-public/${id}`
+                `${import.meta.env.VITE_API_URL || ""}/api/profile/get-public/${id}`
             );
             return result.data;
         },
