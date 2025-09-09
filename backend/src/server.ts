@@ -47,7 +47,6 @@ app.use(limiter);
 
 app.use("/api/images", express.static(path.join(process.cwd(), "images")));
 
-app.set("etag", false);
 app.use("/api/auth/", authRouter);
 app.use("/api/profile/", profileRouter);
 app.use("/api/boards/", boardsRouter);
