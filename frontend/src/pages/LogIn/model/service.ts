@@ -19,7 +19,7 @@ export const login = async (data: LogInFormData): Promise<LoginResponse> => {
         return res.data;
     } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-            throw new Error(error.response?.data?.message || "Login failed");
+            throw error;
         }
         throw new Error("Login failed");
     }

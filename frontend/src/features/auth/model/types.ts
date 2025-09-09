@@ -4,6 +4,7 @@ export interface User {
     email: string;
     avatarurl: string;
     roles: string[];
+    confirmation_key?: string | null;
 }
 
 export interface UpdateUserRequest {

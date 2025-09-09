@@ -4,3 +4,4 @@ export { default as SignUp } from "./SignUp/ui/SignUp";
 export { default as Dashboard } from "./Dashboard/ui/Dashboard";
 export { default as Profile } from "./Profile/ui/Profile";
 export { default as TaskBoard } from "./TaskBoard/ui";
+export { default as EmailConfirmation } from "./EmailConfirmation/ui";

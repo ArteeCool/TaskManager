@@ -19,7 +19,7 @@ export const signUp = async (data: SignUpRequest): Promise<SignUpResponse> => {
         return res.data;
     } catch (error: unknown) {
         if (axios.isAxiosError(error)) {
-            throw new Error(error.response?.data?.message || "Sign up failed");
+            throw error;
         }
         throw new Error("Sign up failed");
     }

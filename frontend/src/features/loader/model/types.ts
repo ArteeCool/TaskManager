@@ -1,1 +1,1 @@
-export type Loaders = "auth" | "fonts"; 
+export type Loaders = "auth" | "fonts" | "profileUpdate" | "boards";

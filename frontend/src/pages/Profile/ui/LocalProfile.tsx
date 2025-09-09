@@ -17,12 +17,14 @@ import { useState, useRef } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import type { ProfileFormData } from "@/features/profile/model/types";
+import { useLoader } from "@/features/loader/lib/useLoader";
 
 const LocalProfile = () => {
     const { user } = useUser();
     const updateUser = useUpdateUser();
     const [passwordStatus, setPasswordStatus] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { startLoading, finishLoading } = useLoader();
 
     const [formData, setFormData] = useState<ProfileFormData>({
         fullname: "",
@@ -106,7 +108,9 @@ const LocalProfile = () => {
         }
 
         try {
+            startLoading("profileUpdate");
             await updateUser.mutateAsync(updatedFields);
+            finishLoading("profileUpdate");
             toast.success("Profile updated successfully");
             document.dispatchEvent(new Event("profileUpdated"));
 
@@ -120,6 +124,7 @@ const LocalProfile = () => {
             setPasswordStatus(null);
         } catch (error: unknown) {
             toast.error("Update failed");
+            finishLoading("profileUpdate");
             if (axios.isAxiosError(error))
                 setPasswordStatus(
                     error?.response?.data?.message || "Update failed"

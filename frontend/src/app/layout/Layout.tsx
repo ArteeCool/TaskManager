@@ -24,18 +24,15 @@ const Layout = () => {
 
     return (
         <>
-            {loadings.size > 0 ? (
-                <Loader />
-            ) : (
-                <div
-                    className="min-h-screen flex flex-col font-geist-mono"
-                    id="layout"
-                >
-                    <Header />
-                    <Outlet />
-                    <Footer />
-                </div>
-            )}
+            {loadings.size > 0 && <Loader />}
+            <div
+                className="min-h-screen flex flex-col font-geist-mono"
+                id="layout"
+            >
+                <Header />
+                <Outlet />
+                <Footer />
+            </div>
         </>
     );
 };

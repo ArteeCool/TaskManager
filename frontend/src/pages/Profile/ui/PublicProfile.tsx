@@ -20,7 +20,7 @@ const PublicProfile = ({ id }: PublicProfileProps) => {
                                         <img
                                             src={user.avatarurl}
                                             alt={user.fullname}
-                                            className="w-full h-full rounded-full object-cover border border-border"
+                                            className="w-full h-full rounded- object-cover border border-border"
                                         />
                                     )}
                                 </div>

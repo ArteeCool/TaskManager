@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useNavigate } from "react-router";
 import { login } from "@/pages/LogIn/model";
+import { toast } from "sonner";
 
 const SignUp = () => {
     const navigate = useNavigate();
@@ -118,8 +119,12 @@ const SignUp = () => {
                 password: formData.password,
             });
             navigate("/app/dashboard");
+            toast.info(
+                "A confirmation email has been sent to your email address. Please confirm your email."
+            );
             document.dispatchEvent(new Event("authorizated"));
         } catch (error: unknown) {
+            console.log(error);
             let message = "Sign up failed";
             if (axios.isAxiosError(error)) {
                 message = error.response?.data?.message || message;

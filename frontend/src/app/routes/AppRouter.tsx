@@ -1,8 +1,16 @@
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { Layout } from "../layout";
 import { ProtectedRoute } from "@/app/routes/ProtectedRoute";
-import { Dashboard, Home, LogIn, Profile, SignUp } from "@/pages";
+import {
+    Dashboard,
+    EmailConfirmation,
+    Home,
+    LogIn,
+    Profile,
+    SignUp,
+} from "@/pages";
 import SidebarLayout from "../layout/SidebarLayout";
+import Boards from "@/pages/Boards/ui";
 
 const router = createBrowserRouter([
     {
@@ -13,6 +21,7 @@ const router = createBrowserRouter([
             { path: "log-in", element: <LogIn /> },
             { path: "sign-up", element: <SignUp /> },
             { path: "profile/:id", element: <Profile /> },
+            { path: "email-confirmation", element: <EmailConfirmation /> },
             {
                 element: <ProtectedRoute />,
                 children: [
@@ -23,6 +32,10 @@ const router = createBrowserRouter([
                             {
                                 path: "dashboard",
                                 element: <Dashboard />,
+                            },
+                            {
+                                path: "boards",
+                                element: <Boards />,
                             },
                         ],
                     },

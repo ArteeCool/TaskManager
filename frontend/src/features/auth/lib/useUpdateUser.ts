@@ -5,13 +5,10 @@ export const useUpdateUser = () => {
     return useMutation({
         mutationFn: async (data: FormData) => {
             const response = await axios.put(
-                "https://arteecool.com.ua/api/profile/update",
+                `${import.meta.env.VITE_API_URL || ""}/api/profile/update`,
                 data,
                 {
                     withCredentials: true,
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
                 }
             );
             return response.data;

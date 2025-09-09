@@ -1,5 +1,5 @@
 import { useUser } from "@/features/auth/lib/useUser";
-import { Settings, LayoutDashboard } from "lucide-react";
+import { Settings, LayoutDashboard, SquareKanban } from "lucide-react";
 import { Link } from "react-router";
 
 const Sidebar = () => {
@@ -24,6 +24,15 @@ const Sidebar = () => {
                         >
                             <LayoutDashboard className="w-5 h-5 mr-3" />
                             <span>Dashboard</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/app/boards"
+                            className="flex items-center px-4 py-3 text-foreground rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors duration-200"
+                        >
+                            <SquareKanban className="w-5 h-5 mr-3" />
+                            <span>Boards</span>
                         </Link>
                     </li>
                 </ul>

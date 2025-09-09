@@ -10,6 +10,7 @@ import { connectDB, dbInit, disconnectDB, queryDB } from "./database/db.ts";
 
 import authRouter from "./routes/auth.route.ts";
 import profileRouter from "./routes/profile.route.ts";
+import boardsRouter from "./routes/boards.route.ts";
 
 dotenv.config();
 
@@ -38,7 +39,6 @@ app.use(
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 150,
-    standardHeaders: "draft-8",
     legacyHeaders: false,
     ipv6Subnet: 60,
 });
@@ -47,8 +47,10 @@ app.use(limiter);
 
 app.use("/api/images", express.static(path.join(process.cwd(), "images")));
 
+app.set("etag", false);
 app.use("/api/auth/", authRouter);
 app.use("/api/profile/", profileRouter);
+app.use("/api/boards/", boardsRouter);
 
 app.listen(PORT as number, "0.0.0.0", async () => {
     console.log(`Server started on port ${PORT}`);
