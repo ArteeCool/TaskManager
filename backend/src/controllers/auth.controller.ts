@@ -38,13 +38,13 @@ export const signUp = async (req: Request, res: Response) => {
 
         const confirmationLink = `${process.env.CLIENT_URL}/email-confirmation?key=${confirmationKey}`;
 
-        await sendEmail(
+        sendEmail(
             email,
             "Email Confirmation",
             `<p>Thank you for signing up, ${fullname}!</p>
             <p>Please confirm your email by clicking the link below:</p>
             <a href="${confirmationLink}">Confirm Email</a>`
-        );
+        ).catch((err) => console.error("Email error:", err));
 
         res.status(201).json({ message: "User created successfully" });
     } catch (error) {
