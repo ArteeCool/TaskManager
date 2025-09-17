@@ -16,6 +16,7 @@ import { socket } from "@/features/boards/lib/socket";
 
 const useTaskDragAndDrop = (
     lists: ListWithTasks[],
+    setLists: React.Dispatch<React.SetStateAction<ListWithTasks[]>>,
     updateTaskMutation: UseMutationResult<
         unknown,
         Error,
@@ -98,7 +99,10 @@ const useTaskDragAndDrop = (
             const sourceListId = parseInt(
                 e.dataTransfer.getData("source-list-id")
             );
-            const newLists = lists.map((l) => ({ ...l, tasks: [...l.tasks] }));
+            const newLists = lists.map((l) => ({
+                ...l,
+                tasks: [...(l.tasks || [])],
+            }));
             const sourceList = newLists.find((l) => l.id === sourceListId);
             const targetList = newLists.find((l) => l.id === targetListId);
 
@@ -147,9 +151,9 @@ const useTaskDragAndDrop = (
             setDragOverList(null);
             setDragOverTask(null);
 
-            return newLists;
+            setLists(newLists);
         },
-        [draggedTask, lists, updateTaskMutation]
+        [draggedTask, lists, setLists, updateTaskMutation]
     );
 
     return {
@@ -165,6 +169,7 @@ const useTaskDragAndDrop = (
 
 const useListDragAndDrop = (
     lists: ListWithTasks[],
+    setLists: React.Dispatch<React.SetStateAction<ListWithTasks[]>>,
     updateListMutation: UseMutationResult<
         unknown,
         Error,
@@ -179,44 +184,10 @@ const useListDragAndDrop = (
         (e: React.DragEvent<HTMLDivElement>, list: ListWithTasks) => {
             setDraggedList(list);
             e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("type", "list");
-
-            const dragImage = document.createElement("div");
-            dragImage.textContent = list.title;
-            dragImage.style.cssText = `
-                padding: 12px 16px;
-                background: linear-gradient(135deg, oklch(var(--primary-500)), oklch(var(--primary-600)));
-                color: white;
-                border-radius: 12px;
-                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-                font-weight: 600;
-                opacity: 0.95;
-                transform: rotate(2deg);
-                position: absolute;
-                top: -1000px;
-                z-index: 9999;
-            `;
-            document.body.appendChild(dragImage);
-            e.dataTransfer.setDragImage(dragImage, 0, 0);
-
-            setTimeout(() => document.body.removeChild(dragImage), 0);
+            e.dataTransfer.setData("list-id", list.id.toString());
         },
         []
     );
-
-    const handleListDragOver = useCallback(
-        (e: React.DragEvent<HTMLDivElement>, listId: number) => {
-            e.preventDefault();
-            if (e.dataTransfer.types.includes("list")) {
-                setDragOverListId(listId);
-            }
-        },
-        []
-    );
-
-    const handleListDragLeave = useCallback(() => {
-        setDragOverListId(null);
-    }, []);
 
     const handleListDrop = useCallback(
         (e: React.DragEvent<HTMLDivElement>, targetListId: number) => {
@@ -246,10 +217,24 @@ const useListDragAndDrop = (
             setDraggedList(null);
             setDragOverListId(null);
 
-            return newLists;
+            setLists(newLists);
         },
-        [draggedList, lists, updateListMutation]
+        [draggedList, lists, setLists, updateListMutation]
     );
+
+    const handleListDragOver = useCallback(
+        (e: React.DragEvent<HTMLDivElement>, listId: number) => {
+            e.preventDefault();
+            if (e.dataTransfer.types.includes("list")) {
+                setDragOverListId(listId);
+            }
+        },
+        []
+    );
+
+    const handleListDragLeave = useCallback(() => {
+        setDragOverListId(null);
+    }, []);
 
     return {
         draggedList,
@@ -661,6 +646,7 @@ const Board = () => {
 
         socket.emit("joinBoard", boardId);
 
+        // ---- TASK CREATED ----
         socket.on("taskCreated", (newTask: Task) => {
             setLists((prev) =>
                 prev.map((list) =>
@@ -671,11 +657,12 @@ const Board = () => {
             );
         });
 
+        // ---- TASKS UPDATED ----
         socket.on("tasksUpdated", (updatedTasks: Task[]) => {
             setLists((prevLists) => {
                 const newLists = prevLists.map((list) => ({
                     ...list,
-                    tasks: [...list.tasks],
+                    tasks: [...(list.tasks || [])], // ensure tasks is array
                 }));
 
                 updatedTasks.forEach((task) => {
@@ -699,6 +686,7 @@ const Board = () => {
             });
         });
 
+        // ---- TASK DELETED ----
         socket.on(
             "taskDeleted",
             ({ taskId, listId }: { taskId: number; listId: number }) => {
@@ -707,7 +695,7 @@ const Board = () => {
                         list.id === listId
                             ? {
                                   ...list,
-                                  tasks: list.tasks.filter(
+                                  tasks: (list.tasks || []).filter(
                                       (t) => t.id !== taskId
                                   ),
                               }
@@ -717,15 +705,24 @@ const Board = () => {
             }
         );
 
+        // ---- LIST CREATED ----
         socket.on("listCreated", (newList: ListWithTasks) => {
-            setLists((prev) => [...prev, newList]);
+            setLists((prev) => [
+                ...prev,
+                { ...newList, tasks: newList.tasks || [] }, // ensure tasks is array
+            ]);
         });
 
+        // ---- LIST UPDATED ----
         socket.on("listUpdated", (updatedList: ListWithTasks) => {
             setLists((prevLists) => {
                 const newLists = prevLists.map((list) =>
                     list.id === updatedList.id
-                        ? { ...list, ...updatedList }
+                        ? {
+                              ...list,
+                              ...updatedList,
+                              tasks: updatedList.tasks || [],
+                          } // ensure tasks array
                         : list
                 );
 
@@ -735,6 +732,7 @@ const Board = () => {
             });
         });
 
+        // ---- LIST DELETED ----
         socket.on("listDeleted", (deletedListId: number) => {
             setLists((prev) =>
                 prev.filter((list) => list.id !== deletedListId)
@@ -829,7 +827,7 @@ const Board = () => {
         handleTaskDragOver,
         handleTaskDragLeave,
         handleTaskDrop,
-    } = useTaskDragAndDrop(lists, updateTaskMutation);
+    } = useTaskDragAndDrop(lists, setLists, updateTaskMutation);
 
     const {
         dragOverListId,
@@ -837,7 +835,7 @@ const Board = () => {
         handleListDragOver,
         handleListDragLeave,
         handleListDrop,
-    } = useListDragAndDrop(lists, updateListMutation);
+    } = useListDragAndDrop(lists, setLists, updateListMutation);
 
     const handleDrop = useCallback(
         (e: React.DragEvent<HTMLDivElement>, listId: number) => {
