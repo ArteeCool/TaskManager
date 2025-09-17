@@ -5,15 +5,22 @@ import {
     getMe,
     logOut,
     confirmEmail,
+    requestPasswordReset,
+    resetPassword,
 } from "../controllers/auth.controller.ts";
 import { authMiddleware } from "../middleware/auth.middleware.ts";
 
-const app = express.Router();
+const router = express.Router();
 
-app.post("/sign-up", signUp);
-app.post("/log-in", logIn);
-app.get("/log-out", authMiddleware, logOut);
-app.get("/me", authMiddleware, getMe);
-app.get("/confirm-email", confirmEmail);
+router.post("/sign-up", signUp);
+router.post("/log-in", logIn);
+router.get("/log-out", authMiddleware, logOut);
 
-export default app;
+router.get("/me", authMiddleware, getMe);
+
+router.get("/confirm-email", confirmEmail);
+
+router.post("/forgot-password", requestPasswordReset);
+router.post("/reset-password/:token", resetPassword);
+
+export default router;

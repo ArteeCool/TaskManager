@@ -5,3 +5,6 @@ export { default as Dashboard } from "./Dashboard/ui/Dashboard";
 export { default as Profile } from "./Profile/ui/Profile";
 export { default as TaskBoard } from "./TaskBoard/ui";
 export { default as EmailConfirmation } from "./EmailConfirmation/ui";
+export { default as ResetPassword } from "./ResetPassword/ui";
+export { default as ForgotPassword } from "./ForgotPassword/ui";
+export { default as Boards } from "./Boards/ui";

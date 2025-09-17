@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useLoader } from "@/features/loader/lib/useLoader";
 import { useGetBoards } from "@/features/boards/lib/useGetBoards";
+import { Link } from "react-router";
 
 const Boards = () => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -116,68 +117,80 @@ const Boards = () => {
                         >
                             Favorites
                         </button>
-                        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
-                            <Plus className="w-4 h-4" />
-                            New Board
-                        </button>
+                        <Link to={"/create-board/"}>
+                            <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2">
+                                <Plus className="w-4 h-4" />
+                                New Board
+                            </button>
+                        </Link>
                     </div>
                 </div>
 
                 {/* Boards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {currentBoards.map((board) => (
-                        <div
-                            key={board.id}
-                            className={`group relative rounded-lg p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105 ${board.colorBackground}`}
-                        >
-                            {/* Color accent bar */}
+                        <Link to={`/board/${board.id}`} key={board.id}>
                             <div
-                                className={`absolute top-0 left-0 w-full h-1 rounded-t-lg ${board.colorAccent}`}
-                            />
+                                key={board.id}
+                                className={`group relative rounded-lg p-6 hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105`}
+                                style={{
+                                    backgroundColor: board.color_background,
+                                }}
+                            >
+                                {/* Color accent bar */}
+                                <div
+                                    className={`absolute top-0 left-0 w-full h-1 rounded-t-lg`}
+                                    style={{
+                                        backgroundColor: board.color_accent,
+                                    }}
+                                />
 
-                            {/* Board header */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex-1">
-                                    <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
-                                        {board.title}
-                                    </h3>
-                                    <p className="text-muted-foreground text-sm line-clamp-2">
-                                        {board.description}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {board.favorite && (
-                                        <div className="w-2 h-2 bg-yellow-400 rounded-full" />
-                                    )}
-                                    <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded">
-                                        <MoreHorizontal className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Stats */}
-                            <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-1">
-                                        <Users className="w-4 h-4" />
-                                        {/* <span>{board.members}</span> */}
+                                {/* Board header */}
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-lg mb-1 group-hover:text-primary transition-colors">
+                                            {board.title}
+                                        </h3>
+                                        <p className="text-muted-foreground text-sm line-clamp-2">
+                                            {board.description}
+                                        </p>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <Calendar className="w-4 h-4" />
-                                        {/* <span>{board.tasks}</span> */}
+                                    <div className="flex items-center gap-2">
+                                        {board.favorite && (
+                                            <div className="w-2 h-2 bg-yellow-400 rounded-full" />
+                                        )}
+                                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded">
+                                            <MoreHorizontal className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <Clock className="w-4 h-4" />
-                                    <span className="text-xs">
-                                        {board.lastUpdated}
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none" />
-                        </div>
+                                {/* Stats */}
+                                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-1">
+                                            <Users className="w-4 h-4" />
+                                            <span>{board.member_count}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Calendar className="w-4 h-4" />
+                                            <span>{board.tasks_count}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Clock className="w-4 h-4" />
+                                        <span className="text-xs">
+                                            {new Date(
+                                                board.last_updated
+                                            ).toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Hover overlay */}
+                                <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg pointer-events-none" />
+                            </div>
+                        </Link>
                     ))}
                 </div>
 
@@ -197,10 +210,12 @@ const Boards = () => {
                                 ? "You haven't favorited any boards yet."
                                 : "Create your first board to get started."}
                         </p>
-                        <button className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto">
-                            <Plus className="w-4 h-4" />
-                            Create New Board
-                        </button>
+                        <Link to={"/create-board/"}>
+                            <button className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto">
+                                <Plus className="w-4 h-4" />
+                                Create New Board
+                            </button>
+                        </Link>
                     </div>
                 )}
 

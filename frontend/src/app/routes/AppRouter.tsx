@@ -2,15 +2,19 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { Layout } from "../layout";
 import { ProtectedRoute } from "@/app/routes/ProtectedRoute";
 import {
+    Boards,
     Dashboard,
     EmailConfirmation,
+    ForgotPassword,
     Home,
     LogIn,
     Profile,
+    ResetPassword,
     SignUp,
 } from "@/pages";
 import SidebarLayout from "../layout/SidebarLayout";
-import Boards from "@/pages/Boards/ui";
+import CreateBoard from "@/pages/CreateBoard/ui";
+import Board from "@/pages/Board/ui";
 
 const router = createBrowserRouter([
     {
@@ -22,6 +26,8 @@ const router = createBrowserRouter([
             { path: "sign-up", element: <SignUp /> },
             { path: "profile/:id", element: <Profile /> },
             { path: "email-confirmation", element: <EmailConfirmation /> },
+            { path: "forgot-password", element: <ForgotPassword /> },
+            { path: "reset-password/:token", element: <ResetPassword /> },
             {
                 element: <ProtectedRoute />,
                 children: [
@@ -38,6 +44,14 @@ const router = createBrowserRouter([
                                 element: <Boards />,
                             },
                         ],
+                    },
+                    {
+                        path: "create-board",
+                        element: <CreateBoard />,
+                    },
+                    {
+                        path: "board/:id",
+                        element: <Board />,
                     },
                 ],
             },

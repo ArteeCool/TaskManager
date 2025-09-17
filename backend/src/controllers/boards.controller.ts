@@ -80,7 +80,9 @@ export const getBoards = async (req: MutatedRequest, res: Response) => {
                 b.color_accent,
                 b.last_updated,
                 bu.role,
-                bu.favorite
+                bu.favorite,
+                (SELECT COUNT(*) FROM board_users WHERE board_id = b.id) AS member_count,
+                (SELECT COUNT(*) FROM tasks WHERE board_id = b.id) AS tasks_count
             FROM boards b
             INNER JOIN board_users bu ON bu.board_id = b.id
             WHERE bu.user_id = $1
@@ -104,5 +106,48 @@ export const getBoards = async (req: MutatedRequest, res: Response) => {
             message: "Internal server error",
             error,
         });
+    }
+};
+
+export const inviteUserToBoard = async (req: MutatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const boardId = Number(req.params.boardId);
+        const { email } = req.body;
+
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+        if (!email)
+            return res.status(400).json({ message: "Email is required" });
+
+        const isMemberRes = await queryDB(
+            "SELECT 1 FROM board_users WHERE user_id = $1 AND board_id = $2",
+            [userId, boardId]
+        );
+        if (!isMemberRes?.rows.length)
+            return res.status(403).json({ message: "Not your board" });
+
+        const userRes = await queryDB("SELECT id FROM users WHERE email = $1", [
+            email,
+        ]);
+        const inviteeId = userRes?.rows[0]?.id;
+        if (!inviteeId)
+            return res.status(404).json({ message: "User not found" });
+
+        const existsRes = await queryDB(
+            "SELECT 1 FROM board_users WHERE user_id = $1 AND board_id = $2",
+            [inviteeId, boardId]
+        );
+        if (existsRes?.rows.length)
+            return res.status(400).json({ message: "User already on board" });
+
+        await queryDB(
+            "INSERT INTO board_users (user_id, board_id, role) VALUES ($1, $2, $3)",
+            [inviteeId, boardId, "member"]
+        );
+
+        res.status(200).json({ message: "User invited successfully" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error", error: err });
     }
 };

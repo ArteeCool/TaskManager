@@ -26,3 +26,34 @@ CREATE TABLE IF NOT EXISTS board_users (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS lists (
+    id SERIAL PRIMARY KEY,
+    board_id INT NOT NULL REFERENCES boards(id) oN DELETE CASCADE,
+    title INT NOT NULL,
+    position INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    board_id INT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'todo',
+    priority TEXT DEFAULT 'none',
+    due_date DATE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id SERIAL PRIMARY KEY,
+    board_id INT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'todo',
+    priority TEXT DEFAULT 'none',
+    due_date DATE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);

@@ -40,7 +40,7 @@ const Input = ({
     return (
         <div className="flex flex-col w-full">
             {label && (
-                <label className="mb-2 text-base-700 text-sm font-medium">
+                <label className="mb-2 text-foreground text-sm font-medium">
                     {label}
                 </label>
             )}

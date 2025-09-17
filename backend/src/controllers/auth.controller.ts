@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { queryDB } from "../database/db.ts";
 import { type Request, type Response } from "express";
 import { generateRandomString } from "../utils/index.ts";
@@ -164,5 +165,101 @@ export const confirmEmail = async (req: Request, res: Response) => {
             message: "Internal server error",
             error: error,
         });
+    }
+};
+
+export const requestPasswordReset = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: "Email is required" });
+        }
+
+        const result = await queryDB("SELECT * FROM users WHERE email = $1;", [
+            email,
+        ]);
+        const user = result?.rows[0];
+
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        const resetToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(resetToken)
+            .digest("hex");
+        const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+        await queryDB(
+            `UPDATE users 
+             SET reset_password_token = $1, reset_password_expires = $2 
+             WHERE id = $3;`,
+            [hashedToken, expires, user.id]
+        );
+
+        const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+        await sendEmail(
+            user.email,
+            "Password Reset Request",
+            `
+                <h2>Password Reset</h2>
+                <p>Click the link below to reset your password:</p>
+                <a href="${resetURL}">${resetURL}</a>
+                <p>This link will expire in 15 minutes.</p>
+            `
+        );
+
+        return res.json({ message: "Password reset email sent" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        if (!token || !password) {
+            return res
+                .status(400)
+                .json({ message: "Token and password are required" });
+        }
+
+        const hashedToken = crypto
+            .createHash("sha256")
+            .update(token)
+            .digest("hex");
+
+        const result = await queryDB(
+            `SELECT * FROM users 
+             WHERE reset_password_token = $1 AND reset_password_expires > $2;`,
+            [hashedToken, new Date(Date.now())]
+        );
+
+        const user = result?.rows[0];
+        if (!user) {
+            return res
+                .status(400)
+                .json({ message: "Invalid or expired token" });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await queryDB(
+            `UPDATE users 
+             SET password = $1, reset_password_token = NULL, reset_password_expires = NULL 
+             WHERE id = $2;`,
+            [hashedPassword, user.id]
+        );
+
+        return res.json({ message: "Password successfully reset" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal server error" });
     }
 };

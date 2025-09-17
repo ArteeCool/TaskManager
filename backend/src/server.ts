@@ -1,31 +1,26 @@
 import express from "express";
-/* import https from "https";
-import fs from "fs"; */
+import http from "http";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import rateLimit from "express-rate-limit";
-import { connectDB, dbInit, disconnectDB, queryDB } from "./database/db.ts";
+import { connectDB, dbInit, disconnectDB } from "./database/db.ts";
 
 import authRouter from "./routes/auth.route.ts";
 import profileRouter from "./routes/profile.route.ts";
 import boardsRouter from "./routes/boards.route.ts";
+import tasksRouter from "./routes/tasks.route.ts";
+import listsRouter from "./routes/lists.route.ts";
+
+import { initSocket } from "./websockets/board.socket.ts";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5678;
 
-/* const server = https.createServer(
-    {
-        key: fs.readFileSync("./certs/arteecool.com.ua-key.pem"),
-        cert: fs.readFileSync("./certs/arteecool.com.ua-crt.pem"),
-        ca: fs.readFileSync("./certs/arteecool.com.ua-chain.pem"),
-        passphrase: process.env.SSL_PASSPHRASE || "",
-    },
-    app
-); */
+export const server = http.createServer(app);
 
 app.use(cookieParser());
 app.use(express.json());
@@ -38,7 +33,7 @@ app.use(
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 150,
+    limit: 1000,
     legacyHeaders: false,
     ipv6Subnet: 60,
 });
@@ -50,12 +45,18 @@ app.use("/api/images", express.static(path.join(process.cwd(), "images")));
 app.use("/api/auth/", authRouter);
 app.use("/api/profile/", profileRouter);
 app.use("/api/boards/", boardsRouter);
+app.use("/api/tasks/", tasksRouter);
+app.use("/api/lists/", listsRouter);
 
-app.listen(PORT as number, "0.0.0.0", async () => {
-    console.log(`Server started on port ${PORT}`);
-    await dbInit();
-    await connectDB();
-}).on("close", () => {
-    disconnectDB();
-    console.log("Server stopped");
-});
+initSocket(server);
+
+server
+    .listen(PORT as number, "0.0.0.0", async () => {
+        console.log(`Server started on port ${PORT}`);
+        await dbInit();
+        await connectDB();
+    })
+    .on("close", () => {
+        disconnectDB();
+        console.log("Server stopped");
+    });

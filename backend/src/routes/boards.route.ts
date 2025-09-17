@@ -1,10 +1,15 @@
-import express from "express";
+import express, { Router } from "express";
 import { authMiddleware } from "../middleware/auth.middleware.ts";
-import { createBoard, getBoards } from "../controllers/boards.controller.ts";
+import {
+    createBoard,
+    getBoards,
+    inviteUserToBoard,
+} from "../controllers/boards.controller.ts";
 
-const app = express.Router();
+const router = express.Router();
 
-app.post("/create", authMiddleware, createBoard);
-app.get("/get", authMiddleware, getBoards);
+router.post("/create", authMiddleware, createBoard);
+router.get("/get", authMiddleware, getBoards);
+router.post("/:boardId/invite", authMiddleware, inviteUserToBoard);
 
-export default app;
+export default router;

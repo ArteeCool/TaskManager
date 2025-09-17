@@ -189,6 +189,15 @@ const LogIn = () => {
                         </Button>
 
                         <p className="text-center text-foreground/70 text-sm">
+                            <Link
+                                to={"/forgot-password"}
+                                className="text-blue-600 hover:text-blue-700 hover:underline"
+                            >
+                                Forgot password?
+                            </Link>
+                        </p>
+
+                        <p className="text-center text-foreground/70 text-sm">
                             Don't have an account?{" "}
                             <Link
                                 to={"/signup"}
