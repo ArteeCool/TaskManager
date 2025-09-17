@@ -947,55 +947,48 @@ const Board = () => {
                                 isDraggingOver={dragOverListId === list.id}
                             />
 
-                            {/* Tasks */}
-                            <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-                                {(list.tasks || []) &&
-                                    list.tasks
-                                        .sort((a, b) => a.position - b.position)
-                                        .map((task) => (
-                                            <div key={task.id}>
-                                                {dragOverTask === task.id && (
-                                                    <div className="h-2 bg-background rounded-full opacity-50 mb-2" />
-                                                )}
-                                                <TaskItem
-                                                    task={task}
-                                                    editingTask={editingTask}
-                                                    setEditingTask={
-                                                        setEditingTask
-                                                    }
-                                                    handleUpdateTask={
-                                                        handleUpdateTask
-                                                    }
-                                                    handleDeleteTask={
-                                                        handleDeleteTask
-                                                    }
-                                                    handleTaskDragStart={
-                                                        handleTaskDragStart
-                                                    }
-                                                    handleTaskDragOver={
-                                                        handleTaskDragOver
-                                                    }
-                                                    handleTaskDragLeave={
-                                                        handleTaskDragLeave
-                                                    }
-                                                    handleTaskDrop={
-                                                        handleTaskDrop
-                                                    }
-                                                    editTaskInputRef={
-                                                        editTaskInputRef
-                                                    }
-                                                    isDragging={
-                                                        draggedTask?.id ===
-                                                        task.id
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-
-                                {dragOverList === list.id && !dragOverTask && (
-                                    <div className="h-2 bg-blue-400 rounded-full opacity-50" />
-                                )}
-                            </div>
+                            {list?.tasks?.length > 0 ? (
+                                list.tasks
+                                    .sort((a, b) => a.position - b.position)
+                                    .map((task) => (
+                                        <div key={task.id}>
+                                            {dragOverTask === task.id && (
+                                                <div className="h-2 bg-background rounded-full opacity-50 mb-2" />
+                                            )}
+                                            <TaskItem
+                                                task={task}
+                                                editingTask={editingTask}
+                                                setEditingTask={setEditingTask}
+                                                handleUpdateTask={
+                                                    handleUpdateTask
+                                                }
+                                                handleDeleteTask={
+                                                    handleDeleteTask
+                                                }
+                                                handleTaskDragStart={
+                                                    handleTaskDragStart
+                                                }
+                                                handleTaskDragOver={
+                                                    handleTaskDragOver
+                                                }
+                                                handleTaskDragLeave={
+                                                    handleTaskDragLeave
+                                                }
+                                                handleTaskDrop={handleTaskDrop}
+                                                editTaskInputRef={
+                                                    editTaskInputRef
+                                                }
+                                                isDragging={
+                                                    draggedTask?.id === task.id
+                                                }
+                                            />
+                                        </div>
+                                    ))
+                            ) : (
+                                <p className="text-sm text-foreground">
+                                    No tasks yet
+                                </p>
+                            )}
 
                             {/* Add Task Form */}
                             <div className="p-4 border-t border-border bg-card rounded-b-2xl">
