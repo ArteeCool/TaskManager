@@ -665,7 +665,7 @@ const Board = () => {
             setLists((prev) =>
                 prev.map((list) =>
                     list.id === newTask.list_id
-                        ? { ...list, tasks: [...list.tasks, newTask] }
+                        ? { ...list, tasks: [...(list.tasks || []), newTask] }
                         : list
                 )
             );
@@ -947,7 +947,7 @@ const Board = () => {
                                 isDraggingOver={dragOverListId === list.id}
                             />
 
-                            {Array.isArray(list?.tasks) ? (
+                            {list?.tasks?.length > 0 ? (
                                 list.tasks
                                     .sort((a, b) => a.position - b.position)
                                     .map((task) => (
@@ -985,11 +985,12 @@ const Board = () => {
                                         </div>
                                     ))
                             ) : (
-                                <p className="text-sm text-gray-400">
+                                <p className="text-sm text-foreground">
                                     No tasks yet
                                 </p>
                             )}
 
+                            {/* Add Task Form */}
                             <div className="p-4 border-t border-border bg-card rounded-b-2xl">
                                 <AddTaskForm
                                     listId={list.id}
