@@ -947,7 +947,7 @@ const Board = () => {
                                 isDraggingOver={dragOverListId === list.id}
                             />
 
-                            {list?.tasks?.length > 0 ? (
+                            {Array.isArray(list?.tasks) ? (
                                 list.tasks
                                     .sort((a, b) => a.position - b.position)
                                     .map((task) => (
@@ -985,12 +985,11 @@ const Board = () => {
                                         </div>
                                     ))
                             ) : (
-                                <p className="text-sm text-foreground">
+                                <p className="text-sm text-gray-400">
                                     No tasks yet
                                 </p>
                             )}
 
-                            {/* Add Task Form */}
                             <div className="p-4 border-t border-border bg-card rounded-b-2xl">
                                 <AddTaskForm
                                     listId={list.id}
