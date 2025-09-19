@@ -1,4 +1,3 @@
-// ProtectedRoute.tsx
 import { useContext, useEffect } from "react";
 import { useNavigate, Outlet } from "react-router";
 import { AuthContext } from "@/features/auth/model/context";
@@ -39,7 +38,8 @@ const ProtectedRoute = () => {
             toast.success("Please confirm your email.");
             navigate("/");
         }
-    }, [navigate, user?.confirmation_key]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (isLoading || !user) return null;
 
