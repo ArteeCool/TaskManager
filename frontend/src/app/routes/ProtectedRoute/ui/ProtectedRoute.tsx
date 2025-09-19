@@ -5,6 +5,7 @@ import { AuthContext } from "@/features/auth/model/context";
 import { useQuery } from "@tanstack/react-query";
 import { useLoader } from "@/features/loader/lib/useLoader";
 import { getCurrentUser } from "@/features/auth/api/getUser";
+import { toast } from "sonner";
 
 const ProtectedRoute = () => {
     const { user } = useContext(AuthContext);
@@ -34,6 +35,11 @@ const ProtectedRoute = () => {
     }, [isLoading, user, navigate]);
 
     if (isLoading || !user) return null;
+
+    if (user.confirmation_key) {
+        toast.success("Please confirm your email.");
+        navigate("/");
+    }
 
     return <Outlet />;
 };
