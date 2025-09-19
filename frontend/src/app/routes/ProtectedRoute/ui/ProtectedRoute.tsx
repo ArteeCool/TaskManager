@@ -34,12 +34,14 @@ const ProtectedRoute = () => {
         }
     }, [isLoading, user, navigate]);
 
-    if (isLoading || !user) return null;
+    useEffect(() => {
+        if (user?.confirmation_key) {
+            toast.success("Please confirm your email.");
+            navigate("/");
+        }
+    }, [navigate, user?.confirmation_key]);
 
-    if (user.confirmation_key) {
-        toast.success("Please confirm your email.");
-        navigate("/");
-    }
+    if (isLoading || !user) return null;
 
     return <Outlet />;
 };
