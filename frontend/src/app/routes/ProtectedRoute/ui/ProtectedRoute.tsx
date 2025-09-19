@@ -38,8 +38,7 @@ const ProtectedRoute = () => {
             toast.success("Please confirm your email.");
             navigate("/");
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [navigate, user?.confirmation_key]);
 
     if (isLoading || !user) return null;
 
