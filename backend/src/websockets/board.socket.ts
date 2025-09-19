@@ -13,6 +13,10 @@ export const initSocket = (server: any) => {
     io.on("connection", (socket) => {
         console.log("User connected:", socket.id);
 
+        io.on("error", (err) => {
+            console.error("Unexpected PG error", err);
+        });
+
         socket.on("joinBoard", (boardId) => {
             socket.join(`board_${boardId}`);
         });
