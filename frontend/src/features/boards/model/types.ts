@@ -1,3 +1,10 @@
+export interface BoardRequest {
+    title: string;
+    description: string;
+    colorBackground: string;
+    colorAccent: string;
+}
+
 export interface BoardResponse {
     id: number;
     title: string;
@@ -11,13 +18,6 @@ export interface BoardResponse {
     tasks_count: number;
 }
 
-export interface BoardRequest {
-    title: string;
-    description: string;
-    colorBackground: string;
-    colorAccent: string;
-}
-
 export interface Task {
     id: number;
     list_id: number;
@@ -25,6 +25,7 @@ export interface Task {
     description: string;
     position: number;
     created_at?: string;
+    board_id?: number;
 }
 
 export interface ListWithTasks {
@@ -33,4 +34,9 @@ export interface ListWithTasks {
     title: string;
     position: number;
     tasks: Task[];
+}
+
+export interface BoardWithListsResponse {
+    board: BoardResponse;
+    lists: ListWithTasks[];
 }

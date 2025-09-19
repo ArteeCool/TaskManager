@@ -50,22 +50,27 @@ export const createList = async (req: MutatedRequest, res: Response) => {
     }
 };
 
-export const getBoardListsWithTasks = async (
-    req: MutatedRequest,
-    res: Response
-) => {
+export const getBoardData = async (req: MutatedRequest, res: Response) => {
     try {
         const userId = req.user?.id;
         const board_id = Number(req.params.id);
 
         if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-        const boards = await queryDB(
-            "SELECT board_id FROM board_users WHERE user_id = $1 AND board_id = $2",
+        const boardResult = await queryDB(
+            `SELECT b.id AS board_id, b.name AS board_name, b.owner_id,
+                    bu.role, bu.favorite
+             FROM board_users bu
+             JOIN boards b ON b.id = bu.board_id
+             WHERE bu.user_id = $1 AND bu.board_id = $2`,
             [userId, board_id]
         );
-        if (!boards?.rows.length)
+
+        if (!boardResult?.rows.length)
             return res.status(403).json({ message: "Not your board" });
+
+        const board = boardResult.rows[0];
+        const isOwner = board.owner_id === userId;
 
         const listsResult = await queryDB(
             "SELECT * FROM lists WHERE board_id = $1 ORDER BY position;",
@@ -90,7 +95,16 @@ export const getBoardListsWithTasks = async (
             ),
         }));
 
-        res.status(200).json(listsWithTasks);
+        res.status(200).json({
+            board: {
+                id: board.board_id,
+                name: board.board_name,
+                isOwner,
+                favorite: board.favorite,
+                role: board.role,
+            },
+            lists: listsWithTasks,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Internal server error", error });

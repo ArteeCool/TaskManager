@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authMiddleware } from "../middleware/auth.middleware.ts";
 import {
     createList,
-    getBoardListsWithTasks,
+    getBoardData,
     updateList,
     deleteList,
 } from "../controllers/lists.controller.ts";
@@ -10,7 +10,6 @@ import {
 const router = Router();
 
 router.post("/create", authMiddleware, createList);
-router.get("/get/:id", authMiddleware, getBoardListsWithTasks);
 router.put("/update/:id", authMiddleware, updateList);
 router.delete("/delete/:id", authMiddleware, deleteList);
 

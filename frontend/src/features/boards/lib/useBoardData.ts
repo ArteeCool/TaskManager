@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import type { ListWithTasks } from "../model/types";
+import type { BoardWithListsResponse } from "../model/types";
 
-export const useGetTasksFromBoard = (boardId: number) => {
-    return useQuery<ListWithTasks[]>({
+export const useGetBoardData = (boardId: number) => {
+    return useQuery<BoardWithListsResponse>({
         queryKey: ["tasks", boardId],
         queryFn: async () => {
             try {
-                const response = await axios.get<ListWithTasks[]>(
+                const response = await axios.get<BoardWithListsResponse>(
                     `${
                         import.meta.env.VITE_API_URL || ""
-                    }/api/lists/get/${boardId}`,
+                    }/api/boards/get/${boardId}`,
                     { withCredentials: true }
                 );
                 return response.data;

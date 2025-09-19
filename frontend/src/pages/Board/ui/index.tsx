@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
-import { useGetTasksFromBoard } from "@/features/boards/lib/useGetTasksFromBoard";
+import { useGetBoardData } from "@/features/boards/lib/useBoardData";
 import { useParams } from "react-router";
-import type { ListWithTasks, Task } from "@/features/boards/model/types";
+import type {
+    BoardResponse,
+    BoardWithListsResponse,
+    ListWithTasks,
+    Task,
+} from "@/features/boards/model/types";
 import {
     useCreateList,
     useUpdateList,
@@ -13,10 +18,11 @@ import {
 } from "@/features/boards/lib/hooks";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { socket } from "@/features/boards/lib/socket";
+import { BoardHeaderWithMembers } from "./BoardHeaderWithMembers";
 
 const useTaskDragAndDrop = (
-    lists: ListWithTasks[],
-    setLists: React.Dispatch<React.SetStateAction<ListWithTasks[]>>,
+    board: BoardWithListsResponse,
+    setLists: React.Dispatch<React.SetStateAction<BoardWithListsResponse>>,
     updateTaskMutation: UseMutationResult<
         unknown,
         Error,
@@ -99,7 +105,7 @@ const useTaskDragAndDrop = (
             const sourceListId = parseInt(
                 e.dataTransfer.getData("source-list-id")
             );
-            const newLists = lists.map((l) => ({
+            const newLists = board.lists.map((l) => ({
                 ...l,
                 tasks: [...(l.tasks || [])],
             }));
@@ -151,9 +157,9 @@ const useTaskDragAndDrop = (
             setDragOverList(null);
             setDragOverTask(null);
 
-            setLists(newLists);
+            setLists({ ...board, lists: newLists });
         },
-        [draggedTask, lists, setLists, updateTaskMutation]
+        [draggedTask, board, setLists, updateTaskMutation]
     );
 
     return {
@@ -168,8 +174,8 @@ const useTaskDragAndDrop = (
 };
 
 const useListDragAndDrop = (
-    lists: ListWithTasks[],
-    setLists: React.Dispatch<React.SetStateAction<ListWithTasks[]>>,
+    board: BoardWithListsResponse,
+    setLists: React.Dispatch<React.SetStateAction<BoardWithListsResponse>>,
     updateListMutation: UseMutationResult<
         unknown,
         Error,
@@ -194,7 +200,7 @@ const useListDragAndDrop = (
             e.preventDefault();
             if (!draggedList || e.dataTransfer.types.includes("task")) return;
 
-            const newLists = [...lists];
+            const newLists = [...board.lists];
             const fromIndex = newLists.findIndex(
                 (l) => l.id === draggedList.id
             );
@@ -217,9 +223,9 @@ const useListDragAndDrop = (
             setDraggedList(null);
             setDragOverListId(null);
 
-            setLists(newLists);
+            setLists({ ...board, lists: newLists });
         },
-        [draggedList, lists, setLists, updateListMutation]
+        [board.lists, draggedList, setLists, updateListMutation]
     );
 
     const handleListDragOver = useCallback(
@@ -599,9 +605,13 @@ const AddListSection = ({
 
 const Board = () => {
     const boardId = Number(useParams().id);
-    const { data: listsData } = useGetTasksFromBoard(boardId);
+    const { data: boardData } = useGetBoardData(boardId);
 
-    const [lists, setLists] = useState<ListWithTasks[]>([]);
+    const [currentBoardData, setCurrentBoardData] =
+        useState<BoardWithListsResponse>({
+            board: {} as BoardResponse,
+            lists: [] as ListWithTasks[],
+        });
 
     const [isAddingList, setIsAddingList] = useState(false);
     const [editingList, setEditingList] = useState<number | null>(null);
@@ -616,8 +626,8 @@ const Board = () => {
     const newTaskInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (listsData) setLists(listsData);
-    }, [listsData]);
+        if (boardData) setCurrentBoardData(boardData);
+    }, [boardData]);
 
     useEffect(() => {
         if (isAddingList) newListInputRef.current?.focus();
@@ -643,26 +653,33 @@ const Board = () => {
 
     useEffect(() => {
         socket.connect();
-
         socket.emit("joinBoard", boardId);
 
-        // ---- TASK CREATED ----
         socket.on("taskCreated", (newTask: Task) => {
-            setLists((prev) =>
-                prev.map((list) =>
-                    list.id === newTask.list_id
-                        ? { ...list, tasks: [...(list.tasks || []), newTask] }
-                        : list
-                )
+            setCurrentBoardData((prev) =>
+                prev
+                    ? {
+                          ...prev,
+                          lists: prev.lists.map((list) =>
+                              list.id === newTask.list_id
+                                  ? {
+                                        ...list,
+                                        tasks: [...(list.tasks || []), newTask],
+                                    }
+                                  : list
+                          ),
+                      }
+                    : prev
             );
         });
 
-        // ---- TASKS UPDATED ----
         socket.on("tasksUpdated", (updatedTasks: Task[]) => {
-            setLists((prevLists) => {
-                const newLists = prevLists.map((list) => ({
+            setCurrentBoardData((prev) => {
+                if (!prev) return prev;
+
+                const newLists = prev.lists.map((list) => ({
                     ...list,
-                    tasks: [...(list.tasks || [])], // ensure tasks is array
+                    tasks: [...(list.tasks || [])],
                 }));
 
                 updatedTasks.forEach((task) => {
@@ -682,60 +699,77 @@ const Board = () => {
                     list.tasks.sort((a, b) => a.position - b.position);
                 });
 
-                return newLists;
+                return { ...prev, lists: newLists };
             });
         });
 
-        // ---- TASK DELETED ----
         socket.on(
             "taskDeleted",
             ({ taskId, listId }: { taskId: number; listId: number }) => {
-                setLists((prev) =>
-                    prev.map((list) =>
-                        list.id === listId
-                            ? {
-                                  ...list,
-                                  tasks: (list.tasks || []).filter(
-                                      (t) => t.id !== taskId
-                                  ),
-                              }
-                            : list
-                    )
+                setCurrentBoardData((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              lists: prev.lists.map((list) =>
+                                  list.id === listId
+                                      ? {
+                                            ...list,
+                                            tasks: (list.tasks || []).filter(
+                                                (t) => t.id !== taskId
+                                            ),
+                                        }
+                                      : list
+                              ),
+                          }
+                        : prev
                 );
             }
         );
 
-        // ---- LIST CREATED ----
         socket.on("listCreated", (newList: ListWithTasks) => {
-            setLists((prev) => [
-                ...prev,
-                { ...newList, tasks: newList.tasks || [] }, // ensure tasks is array
-            ]);
+            setCurrentBoardData((prev) =>
+                prev
+                    ? {
+                          ...prev,
+                          lists: [
+                              ...prev.lists,
+                              { ...newList, tasks: newList.tasks || [] },
+                          ],
+                      }
+                    : prev
+            );
         });
 
-        // ---- LIST UPDATED ----
         socket.on("listUpdated", (updatedList: ListWithTasks) => {
-            setLists((prevLists) => {
-                const newLists = prevLists.map((list) =>
+            setCurrentBoardData((prev) => {
+                if (!prev) return prev;
+
+                const newLists = prev.lists.map((list) =>
                     list.id === updatedList.id
                         ? {
                               ...list,
                               ...updatedList,
                               tasks: updatedList.tasks || [],
-                          } // ensure tasks array
+                          }
                         : list
                 );
 
                 newLists.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-                return newLists;
+                return { ...prev, lists: newLists };
             });
         });
 
-        // ---- LIST DELETED ----
         socket.on("listDeleted", (deletedListId: number) => {
-            setLists((prev) =>
-                prev.filter((list) => list.id !== deletedListId)
+            setCurrentBoardData((prev) =>
+                prev
+                    ? {
+                          ...prev,
+                          lists: prev.lists.filter(
+                              (list) => list.id !== deletedListId
+                          ),
+                      }
+                    : prev
             );
         });
 
@@ -827,7 +861,11 @@ const Board = () => {
         handleTaskDragOver,
         handleTaskDragLeave,
         handleTaskDrop,
-    } = useTaskDragAndDrop(lists, setLists, updateTaskMutation);
+    } = useTaskDragAndDrop(
+        currentBoardData,
+        setCurrentBoardData,
+        updateTaskMutation
+    );
 
     const {
         dragOverListId,
@@ -835,7 +873,11 @@ const Board = () => {
         handleListDragOver,
         handleListDragLeave,
         handleListDrop,
-    } = useListDragAndDrop(lists, setLists, updateListMutation);
+    } = useListDragAndDrop(
+        currentBoardData,
+        setCurrentBoardData,
+        updateListMutation
+    );
 
     const handleDrop = useCallback(
         (e: React.DragEvent<HTMLDivElement>, listId: number) => {
@@ -864,29 +906,6 @@ const Board = () => {
         [handleTaskDragOver, handleListDragOver]
     );
 
-    const [inviteEmail, setInviteEmail] = useState("");
-
-    const handleInvite = () => {
-        if (!inviteEmail.trim()) return;
-        fetch(
-            `${
-                import.meta.env.VITE_API_URL || ""
-            }/api/boards/${boardId}/invite`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ email: inviteEmail }),
-            }
-        )
-            .then((res) => res.json())
-            .then((data) => {
-                if (data.message) alert(data.message);
-                setInviteEmail("");
-            })
-            .catch(console.error);
-    };
-
     return (
         <div className="flex-1 bg-background p-4 md:p-6">
             <div className="max-w-full mx-auto">
@@ -894,29 +913,18 @@ const Board = () => {
                     <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-2">
                         Project Board
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        Organize your tasks and track progress
-                    </p>
                 </div>
 
-                <div className="flex gap-2 items-center p-4">
-                    <input
-                        type="email"
-                        value={inviteEmail}
-                        onChange={(e) => setInviteEmail(e.target.value)}
-                        placeholder="Invite user by email"
-                        className="border p-2 rounded flex-1"
+                {boardData?.board && (
+                    <BoardHeaderWithMembers
+                        boardData={boardData.board}
+                        description="Organize your tasks and track progress"
+                        title={boardData.board.title}
                     />
-                    <button
-                        onClick={handleInvite}
-                        className="px-3 py-2 bg-foreground text-background rounded"
-                    >
-                        Invite
-                    </button>
-                </div>
+                )}
 
                 <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 min-h-[600px]">
-                    {lists.map((list) => (
+                    {currentBoardData.lists.map((list) => (
                         <div
                             key={list.id}
                             className={`flex-shrink-0 w-72 md:w-80 bg-card rounded-2xl shadow-lg border transition-all duration-200 ${
@@ -983,9 +991,14 @@ const Board = () => {
                                         </div>
                                     ))
                             ) : (
-                                <p className="text-sm text-foreground">
-                                    No tasks yet
-                                </p>
+                                <div className="flex flex-col justify-center py-6 px-8">
+                                    <div className="text-gray-400 text-sm font-medium">
+                                        No tasks yet
+                                    </div>
+                                    <div className="text-gray-300 text-xs mt-1">
+                                        Add your first task
+                                    </div>
+                                </div>
                             )}
 
                             {/* Add Task Form */}
