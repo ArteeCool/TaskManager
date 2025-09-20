@@ -165,16 +165,39 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
             tasks = tasksResult?.rows || [];
 
             const taskIds = tasks.map((t) => t.id);
-            let assigneesMap: Record<number, number[]> = {};
+            let assigneesMap: Record<
+                number,
+                Array<{
+                    id: number;
+                    fullname: string;
+                    email: string;
+                    avatarurl: string;
+                }>
+            > = {};
             if (taskIds.length > 0) {
                 const assigneesRes = await queryDB(
-                    `SELECT task_id, user_id FROM task_assignees WHERE task_id = ANY($1::int[])`,
+                    `
+                    SELECT 
+                    ta.task_id,
+                    u.id as user_id,
+                    u.fullname,
+                    u.email,
+                    u.avatarurl
+                    FROM task_assignees ta
+                    LEFT JOIN users u ON u.id = ta.user_id
+                    WHERE ta.task_id = ANY($1::int[])
+                    `,
                     [taskIds]
                 );
                 assigneesRes?.rows.forEach((row) => {
                     if (!assigneesMap[row.task_id])
                         assigneesMap[row.task_id] = [];
-                    assigneesMap[row.task_id].push(row.user_id);
+                    assigneesMap[row.task_id].push({
+                        id: row.user_id,
+                        fullname: row.fullname,
+                        email: row.email,
+                        avatarurl: row.avatarurl,
+                    });
                 });
             }
 

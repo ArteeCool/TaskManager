@@ -145,8 +145,12 @@ const useTaskDragAndDrop = (
                 const tgtIndex = targetList.tasks.findIndex(
                     (t) => t.id === targetTaskId
                 );
-                const insertIndex =
-                    tgtIndex === -1 ? targetList.tasks.length : tgtIndex;
+
+                const rect = e.currentTarget.getBoundingClientRect();
+                const dropPosition = e.clientY - rect.top;
+                const isDroppingAbove = dropPosition < rect.height / 2;
+
+                const insertIndex = isDroppingAbove ? tgtIndex : tgtIndex + 1;
                 targetList.tasks.splice(insertIndex, 0, movedTask);
             } else {
                 targetList.tasks.push(movedTask);
@@ -431,13 +435,27 @@ const TaskItem = ({
                         className="text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
                     />
                     <div className="flex-1 cursor-pointer">
-                        <p className="text-foreground font-medium leading-relaxed">
+                        <p className="text-foreground font-medium leading-relaxed text-wrap wrap-anywhere">
                             {task.title}
                         </p>
                         {task.description && (
                             <p className="text-muted-foreground text-sm mt-2 line-clamp-2">
                                 {task.description}
                             </p>
+                        )}
+                    </div>
+                    <div>
+                        {task.assignees && task.assignees.length > 0 && (
+                            <div className="flex -space-x-2">
+                                {task.assignees.map((assignee, index) => (
+                                    <img
+                                        key={index}
+                                        src={assignee.avatarurl}
+                                        alt={assignee.fullname}
+                                        className="w-8 h-8 rounded-full border border-border/50"
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
                 </div>
@@ -675,6 +693,11 @@ const Board = () => {
             setCurrentBoardData((prev) => {
                 if (!prev) return prev;
 
+                // Create a map of members for easy lookup
+                const membersMap = new Map(
+                    prev.members.map((member) => [member.id, member])
+                );
+
                 const listMap = new Map(
                     prev.lists.map((l) => [
                         l.id,
@@ -683,6 +706,17 @@ const Board = () => {
                 );
 
                 updatedTasks.forEach((task) => {
+                    // Convert assignee IDs to Member objects
+                    if (task.assignees && Array.isArray(task.assignees)) {
+                        task.assignees = task.assignees
+                            .map((assignee) =>
+                                typeof assignee === "number"
+                                    ? membersMap.get(assignee)
+                                    : assignee
+                            )
+                            .filter(Boolean) as Member[];
+                    }
+
                     listMap.forEach((list) => {
                         list.tasks = list.tasks.filter((t) => t.id !== task.id);
                     });
@@ -836,12 +870,16 @@ const Board = () => {
         );
     };
 
-    const handleUpdateTask = (
-        taskId: number,
-        payload: Partial<TaskRequest>
-    ) => {
+    const handleUpdateTask = (taskId: number, payload: Partial<Task>) => {
+        const apiPayload = {
+            ...payload,
+            assignees: Array.isArray(payload.assignees)
+                ? payload.assignees.map((m) => m.id)
+                : payload.assignees,
+        };
+
         updateTaskMutation.mutate(
-            [{ id: taskId, ...payload } as Partial<Task> & { id: number }],
+            [{ id: taskId, ...apiPayload } as Partial<Task> & { id: number }],
             {
                 onSuccess: () => setEditingTask(null),
                 onError: (error: unknown) =>
@@ -909,6 +947,10 @@ const Board = () => {
         [handleTaskDragOver, handleListDragOver]
     );
 
+    useEffect(() => {
+        console.log(currentBoardData);
+    }, [currentBoardData]);
+
     return (
         <div className="flex-1 bg-background p-4 md:p-6">
             <div className="max-w-full mx-auto">
@@ -962,7 +1004,10 @@ const Board = () => {
                                     .map((task) => (
                                         <div key={task.id}>
                                             {dragOverTask === task.id && (
-                                                <div className="h-2 bg-background rounded-full opacity-50 mb-2" />
+                                                <div className="relative">
+                                                    <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-400 rounded-full opacity-80" />
+                                                    <div className="absolute -bottom-1 left-0 right-0 h-1 bg-blue-400 rounded-full opacity-80" />
+                                                </div>
                                             )}
                                             <TaskItem
                                                 task={task}
@@ -1020,7 +1065,14 @@ const Board = () => {
 
                 <Dialog
                     open={!!targetTask}
-                    onOpenChange={() => setTargetTask(null)}
+                    onOpenChange={() => {
+                        if (targetTask) {
+                            handleUpdateTask(targetTask.id, {
+                                title: targetTask.title,
+                            });
+                        }
+                        setTargetTask(null);
+                    }}
                 >
                     <DialogContent className="!w-full !max-w-4xl flex flex-col items-start max-h-[90vh] overflow-hidden">
                         <DialogHeader>
@@ -1044,13 +1096,9 @@ const Board = () => {
                                                 ...targetTask,
                                                 title: e.target.value,
                                             });
-                                            handleUpdateTask(targetTask.id, {
-                                                title: targetTask.title,
-                                            });
                                         }}
                                     />
                                 </div>
-
                                 <AssigneesField
                                     targetTask={targetTask}
                                     boardData={currentBoardData}
@@ -1062,17 +1110,23 @@ const Board = () => {
                                             ...targetTask,
                                             ...payload,
                                             assignees:
-                                                payload.assignees?.map(
-                                                    (id) =>
-                                                        currentBoardData.members.find(
-                                                            (m) => m.id === id
-                                                        )!
-                                                ) || targetTask.assignees,
+                                                (payload.assignees as unknown as Member[]) ||
+                                                targetTask.assignees,
                                         };
-
                                         setTargetTask(updatedTask);
 
-                                        handleUpdateTask(taskId, payload);
+                                        const apiPayload = {
+                                            ...payload,
+                                            assignees: Array.isArray(
+                                                payload.assignees
+                                            )
+                                                ? (
+                                                      payload.assignees as unknown as Member[]
+                                                  ).map((m) => m.id)
+                                                : payload.assignees,
+                                        };
+
+                                        handleUpdateTask(taskId, apiPayload);
                                     }}
                                 />
 
@@ -1229,7 +1283,7 @@ const Board = () => {
                                                                     fullname:
                                                                         user.fullname,
                                                                     avatarurl:
-                                                                        user.avatarUrl ||
+                                                                        user.avatarurl ||
                                                                         "",
                                                                     email: user.email,
                                                                 },

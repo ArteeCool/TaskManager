@@ -64,18 +64,18 @@ const AssigneesField = ({
         const isAssigned = currentAssignees.some(
             (assignee) => assignee.id === member.id
         );
-        let newAssignees;
+        let newAssignees: number[];
 
         if (isAssigned) {
-            newAssignees = currentAssignees.filter(
-                (assignee) => assignee.id !== member.id
-            );
+            newAssignees = currentAssignees
+                .filter((assignee) => assignee.id !== member.id)
+                .map((assignee) => assignee.id);
         } else {
-            newAssignees = [...currentAssignees, member];
+            newAssignees = [...currentAssignees.map((a) => a.id), member.id];
         }
 
         handleUpdateTask(targetTask.id, {
-            assignees: newAssignees.map((assignee) => assignee.id),
+            assignees: newAssignees,
         });
     };
 

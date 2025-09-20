@@ -1,7 +1,7 @@
 // hooks.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import type { ListWithTasks, Task } from "../model/types";
+import type { ListWithTasks, Task, TaskRequest } from "../model/types";
 
 // Create a reusable axios instance with default config
 const apiClient = axios.create({
@@ -106,7 +106,7 @@ export const useUpdateTask = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: Partial<Task> & { id: number }) => {
+        mutationFn: async (data: Partial<TaskRequest>) => {
             try {
                 const response = await apiClient.put(
                     `/api/tasks/update/${data.id}`,
