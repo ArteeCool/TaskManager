@@ -26,6 +26,30 @@ export interface Task {
     position: number;
     created_at?: string;
     board_id?: number;
+    assignees?: Member[];
+    comments?: Comment[];
+}
+
+export interface TaskRequest {
+    id: number;
+    title?: string;
+    list_id?: number;
+    position?: number;
+    assignees?: number[];
+}
+
+export interface Member {
+    id: number;
+    fullname: string;
+    avatarurl: string;
+    email: string;
+}
+
+interface Comment {
+    id: number;
+    task_id: number;
+    author: Member;
+    text: string;
 }
 
 export interface ListWithTasks {
@@ -39,4 +63,5 @@ export interface ListWithTasks {
 export interface BoardWithListsResponse {
     board: BoardResponse;
     lists: ListWithTasks[];
+    members: Member[];
 }

@@ -129,12 +129,11 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
                 bu.role,
                 bu.favorite,
                 (SELECT COUNT(*) FROM board_users WHERE board_id = b.id) AS member_count,
-                (SELECT COUNT(*) FROM tasks WHERE board_id = b.id) AS tasks_counts
+                (SELECT COUNT(*) FROM tasks WHERE board_id = b.id) AS tasks_count
             FROM boards b
             INNER JOIN board_users bu ON bu.board_id = b.id
             WHERE bu.user_id = $1 AND b.id = $2;
         `;
-
         const boardResult = await queryDB(boardQuery, [userId, boardId]);
 
         if (!boardResult?.rows.length) {
@@ -150,25 +149,54 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
             ORDER BY position;
         `;
         const listsResult = await queryDB(listsQuery, [boardId]);
-        const lists = listsResult?.rows;
+        const lists = listsResult?.rows || [];
 
-        const listIds = (lists || []).map((l) => l.id);
+        const listIds = lists.map((l) => l.id);
         let tasks: any[] = [];
+
         if (listIds.length > 0) {
             const tasksQuery = `
-                SELECT *
-                FROM tasks
-                WHERE list_id = ANY($1::int[])
-                ORDER BY position;
+                SELECT t.*
+                FROM tasks t
+                WHERE t.list_id = ANY($1::int[])
+                ORDER BY t.position;
             `;
             const tasksResult = await queryDB(tasksQuery, [listIds]);
             tasks = tasksResult?.rows || [];
+
+            const taskIds = tasks.map((t) => t.id);
+            let assigneesMap: Record<number, number[]> = {};
+            if (taskIds.length > 0) {
+                const assigneesRes = await queryDB(
+                    `SELECT task_id, user_id FROM task_assignees WHERE task_id = ANY($1::int[])`,
+                    [taskIds]
+                );
+                assigneesRes?.rows.forEach((row) => {
+                    if (!assigneesMap[row.task_id])
+                        assigneesMap[row.task_id] = [];
+                    assigneesMap[row.task_id].push(row.user_id);
+                });
+            }
+
+            tasks = tasks.map((task) => ({
+                ...task,
+                assignees: assigneesMap[task.id] || [],
+            }));
         }
 
-        const listsWithTasks = (lists || []).map((list) => ({
+        const listsWithTasks = lists.map((list) => ({
             ...list,
             tasks: tasks.filter((task) => task.list_id === list.id),
         }));
+
+        const membersQuery = `
+            SELECT u.id, u.email, u.fullname, u.avatarurl
+            FROM users u
+            INNER JOIN board_users bu ON bu.user_id = u.id
+            WHERE bu.board_id = $1;
+        `;
+        const membersResult = await queryDB(membersQuery, [boardId]);
+        const members = membersResult?.rows || [];
 
         return res.status(200).json({
             board: {
@@ -184,6 +212,7 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
                 tasks_count: board.tasks_count,
             },
             lists: listsWithTasks,
+            members,
         });
     } catch (error) {
         console.error("Error fetching board with lists and tasks:", error);

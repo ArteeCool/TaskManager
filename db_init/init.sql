@@ -52,3 +52,9 @@ CREATE TABLE IF NOT EXISTS board_invitations (
   created_at TIMESTAMP DEFAULT now(),
   expires_at TIMESTAMP DEFAULT now() + interval '7 days'
 );
+
+CREATE TABLE IF NOT EXISTS task_assignees (
+    task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    PRIMARY KEY (task_id, user_id)
+);

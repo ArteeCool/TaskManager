@@ -101,7 +101,7 @@ const BoardMembersModal = ({
             );
 
             if (response.ok) {
-                fetchMembers(); // Refresh members list
+                fetchMembers();
             } else {
                 const data = await response.json();
                 alert(data.message || "Failed to update member role");

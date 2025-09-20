@@ -1,12 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
+import {
+    Plus,
+    Trash2,
+    GripVertical,
+    Check,
+    X,
+    MessageSquare,
+} from "lucide-react";
 import { useGetBoardData } from "@/features/boards/lib/useBoardData";
 import { useNavigate, useParams } from "react-router";
 import type {
     BoardResponse,
     BoardWithListsResponse,
     ListWithTasks,
+    Member,
     Task,
+    TaskRequest,
 } from "@/features/boards/model/types";
 import {
     useCreateList,
@@ -19,6 +28,16 @@ import {
 import type { UseMutationResult } from "@tanstack/react-query";
 import { socket } from "@/features/boards/lib/socket";
 import { BoardHeaderWithMembers } from "./BoardHeaderWithMembers";
+import {
+    Button,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    Input,
+} from "@/shared/ui";
+import AssigneesField from "./AssigneesField";
+import { useUser } from "@/features/auth/lib/useUser";
 
 const useTaskDragAndDrop = (
     board: BoardWithListsResponse,
@@ -363,21 +382,15 @@ const ListHeader = ({
 
 const TaskItem = ({
     task,
-    editingTask,
-    setEditingTask,
-    handleUpdateTask,
     handleDeleteTask,
     handleTaskDragStart,
     handleTaskDragOver,
     handleTaskDragLeave,
     handleTaskDrop,
-    editTaskInputRef,
     isDragging,
+    setTargetTask,
 }: {
     task: Task;
-    editingTask: number | null;
-    setEditingTask: (id: number | null) => void;
-    handleUpdateTask: (id: number, payload: Partial<Task>) => void;
     handleDeleteTask: (id: number) => void;
     handleTaskDragStart: (
         e: React.DragEvent<HTMLDivElement>,
@@ -394,8 +407,8 @@ const TaskItem = ({
         listId: number,
         taskId: number | null
     ) => void;
-    editTaskInputRef: React.RefObject<HTMLInputElement | null>;
     isDragging: boolean;
+    setTargetTask: React.Dispatch<React.SetStateAction<Task | null>>;
 }) => {
     return (
         <div
@@ -404,6 +417,7 @@ const TaskItem = ({
             onDragOver={(e) => handleTaskDragOver(e, task.list_id, task.id)}
             onDragLeave={handleTaskDragLeave}
             onDrop={(e) => handleTaskDrop(e, task.list_id, task.id)}
+            onClick={() => setTargetTask(task)}
             className={`group bg-card hover:bg-card/80 p-4 rounded-xl border border-border/50 cursor-grab transition-all duration-200 hover:shadow-md hover:shadow-primary-100/50 hover:border-primary-200 ${
                 isDragging
                     ? "opacity-40 scale-95 rotate-2"
@@ -416,42 +430,16 @@ const TaskItem = ({
                         size={14}
                         className="text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
                     />
-                    {editingTask === task.id ? (
-                        <div className="flex-1">
-                            <input
-                                ref={editTaskInputRef}
-                                defaultValue={task.title}
-                                className="w-full bg-background border-2 border-primary-400 rounded-lg px-3 py-2 text-sm outline-none text-foreground focus:ring-2 focus:ring-primary-200 transition-all duration-200"
-                                onBlur={(e) =>
-                                    handleUpdateTask(task.id, {
-                                        title: e.target.value,
-                                    })
-                                }
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                        handleUpdateTask(task.id, {
-                                            title: e.currentTarget.value,
-                                        });
-                                    if (e.key === "Escape")
-                                        setEditingTask(null);
-                                }}
-                            />
-                        </div>
-                    ) : (
-                        <div
-                            className="flex-1 cursor-pointer"
-                            onClick={() => setEditingTask(task.id)}
-                        >
-                            <p className="text-foreground font-medium leading-relaxed">
-                                {task.title}
+                    <div className="flex-1 cursor-pointer">
+                        <p className="text-foreground font-medium leading-relaxed">
+                            {task.title}
+                        </p>
+                        {task.description && (
+                            <p className="text-muted-foreground text-sm mt-2 line-clamp-2">
+                                {task.description}
                             </p>
-                            {task.description && (
-                                <p className="text-muted-foreground text-sm mt-2 line-clamp-2">
-                                    {task.description}
-                                </p>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={() => handleDeleteTask(task.id)}
@@ -606,6 +594,7 @@ const AddListSection = ({
 const Board = () => {
     const boardId = Number(useParams().id);
     const { data: boardData, isError } = useGetBoardData(boardId);
+    const { user } = useUser();
 
     const navigate = useNavigate();
 
@@ -613,14 +602,17 @@ const Board = () => {
         useState<BoardWithListsResponse>({
             board: {} as BoardResponse,
             lists: [] as ListWithTasks[],
+            members: [] as Member[],
         });
 
+    const [targetTask, setTargetTask] = useState<Task | null>(null);
     const [isAddingList, setIsAddingList] = useState(false);
     const [editingList, setEditingList] = useState<number | null>(null);
     const [editingTask, setEditingTask] = useState<number | null>(null);
     const [addingTaskToList, setAddingTaskToList] = useState<number | null>(
         null
     );
+    const [newComment, setNewComment] = useState({ content: "" });
 
     const newListInputRef = useRef<HTMLInputElement>(null);
     const editListInputRef = useRef<HTMLInputElement>(null);
@@ -683,27 +675,26 @@ const Board = () => {
             setCurrentBoardData((prev) => {
                 if (!prev) return prev;
 
-                const newLists = prev.lists.map((list) => ({
-                    ...list,
-                    tasks: [...(list.tasks || [])],
-                }));
+                const listMap = new Map(
+                    prev.lists.map((l) => [
+                        l.id,
+                        { ...l, tasks: [...(l.tasks || [])] },
+                    ])
+                );
 
                 updatedTasks.forEach((task) => {
-                    newLists.forEach((list) => {
+                    listMap.forEach((list) => {
                         list.tasks = list.tasks.filter((t) => t.id !== task.id);
                     });
 
-                    const targetList = newLists.find(
-                        (l) => l.id === task.list_id
-                    );
-                    if (targetList) {
-                        targetList.tasks.push(task);
-                    }
+                    const targetList = listMap.get(task.list_id);
+                    if (targetList) targetList.tasks.push(task);
                 });
 
-                newLists.forEach((list) => {
-                    list.tasks.sort((a, b) => a.position - b.position);
-                });
+                const newLists = Array.from(listMap.values()).map((list) => ({
+                    ...list,
+                    tasks: list.tasks.sort((a, b) => a.position - b.position),
+                }));
 
                 return { ...prev, lists: newLists };
             });
@@ -845,12 +836,18 @@ const Board = () => {
         );
     };
 
-    const handleUpdateTask = (taskId: number, payload: Partial<Task>) => {
-        updateTaskMutation.mutate([{ id: taskId, ...payload }], {
-            onSuccess: () => setEditingTask(null),
-            onError: (error: unknown) =>
-                console.error("Failed to update task:", error),
-        });
+    const handleUpdateTask = (
+        taskId: number,
+        payload: Partial<TaskRequest>
+    ) => {
+        updateTaskMutation.mutate(
+            [{ id: taskId, ...payload } as Partial<Task> & { id: number }],
+            {
+                onSuccess: () => setEditingTask(null),
+                onError: (error: unknown) =>
+                    console.error("Failed to update task:", error),
+            }
+        );
     };
 
     const handleDeleteTask = (taskId: number) => {
@@ -969,11 +966,6 @@ const Board = () => {
                                             )}
                                             <TaskItem
                                                 task={task}
-                                                editingTask={editingTask}
-                                                setEditingTask={setEditingTask}
-                                                handleUpdateTask={
-                                                    handleUpdateTask
-                                                }
                                                 handleDeleteTask={
                                                     handleDeleteTask
                                                 }
@@ -987,12 +979,10 @@ const Board = () => {
                                                     handleTaskDragLeave
                                                 }
                                                 handleTaskDrop={handleTaskDrop}
-                                                editTaskInputRef={
-                                                    editTaskInputRef
-                                                }
                                                 isDragging={
                                                     draggedTask?.id === task.id
                                                 }
+                                                setTargetTask={setTargetTask}
                                             />
                                         </div>
                                     ))
@@ -1027,6 +1017,251 @@ const Board = () => {
                         newListInputRef={newListInputRef}
                     />
                 </div>
+
+                <Dialog
+                    open={!!targetTask}
+                    onOpenChange={() => setTargetTask(null)}
+                >
+                    <DialogContent className="!w-full !max-w-4xl flex flex-col items-start max-h-[90vh] overflow-hidden">
+                        <DialogHeader>
+                            <DialogTitle>Edit Task</DialogTitle>
+                        </DialogHeader>
+                        {targetTask && (
+                            <div className="w-full space-y-6 overflow-y-auto flex-1">
+                                {/* Title Field */}
+                                <div className="space-y-2">
+                                    <label
+                                        htmlFor="task-title"
+                                        className="text-sm font-medium"
+                                    >
+                                        Title
+                                    </label>
+                                    <Input
+                                        id="task-title"
+                                        value={targetTask.title}
+                                        onChange={(e) => {
+                                            setTargetTask({
+                                                ...targetTask,
+                                                title: e.target.value,
+                                            });
+                                            handleUpdateTask(targetTask.id, {
+                                                title: targetTask.title,
+                                            });
+                                        }}
+                                    />
+                                </div>
+
+                                <AssigneesField
+                                    targetTask={targetTask}
+                                    boardData={currentBoardData}
+                                    handleUpdateTask={(
+                                        taskId: number,
+                                        payload: Partial<TaskRequest>
+                                    ) => {
+                                        const updatedTask: Task = {
+                                            ...targetTask,
+                                            ...payload,
+                                            assignees:
+                                                payload.assignees?.map(
+                                                    (id) =>
+                                                        currentBoardData.members.find(
+                                                            (m) => m.id === id
+                                                        )!
+                                                ) || targetTask.assignees,
+                                        };
+
+                                        setTargetTask(updatedTask);
+
+                                        handleUpdateTask(taskId, payload);
+                                    }}
+                                />
+
+                                {/* Enhanced Comments Section */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-sm font-medium flex items-center gap-2">
+                                            <MessageSquare className="w-4 h-4" />
+                                            Comments
+                                            {(targetTask?.comments?.length ??
+                                                0) > 0 && (
+                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                    {targetTask?.comments
+                                                        ?.length ?? 0}
+                                                </span>
+                                            )}
+                                        </label>
+                                    </div>
+
+                                    {/* Existing Comments */}
+                                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                                        {targetTask.comments?.length === 0 ? (
+                                            <div className="text-center py-8 text-gray-500">
+                                                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                                <p className="text-sm">
+                                                    No comments yet
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            targetTask.comments?.map(
+                                                (comment, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="group relative bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                                                    >
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <div>
+                                                                    <div className="font-medium text-sm text-gray-900">
+                                                                        {
+                                                                            comment
+                                                                                .author
+                                                                                .fullname
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                onClick={() => {
+                                                                    const newComments =
+                                                                        targetTask.comments?.filter(
+                                                                            (
+                                                                                _,
+                                                                                i
+                                                                            ) =>
+                                                                                i !==
+                                                                                index
+                                                                        ) || [];
+                                                                    setTargetTask(
+                                                                        {
+                                                                            ...targetTask,
+                                                                            comments:
+                                                                                newComments,
+                                                                        }
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+
+                                                        {/* Comment Content */}
+                                                        <textarea
+                                                            className="w-full p-3 text-sm border border-gray-200 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                            value={comment.text}
+                                                            onChange={(e) => {
+                                                                const newComments =
+                                                                    [
+                                                                        ...(targetTask.comments ||
+                                                                            []),
+                                                                    ];
+                                                                newComments[
+                                                                    index
+                                                                ] = {
+                                                                    ...newComments[
+                                                                        index
+                                                                    ],
+                                                                    text: e
+                                                                        .target
+                                                                        .value,
+                                                                };
+                                                                setTargetTask({
+                                                                    ...targetTask,
+                                                                    comments:
+                                                                        newComments,
+                                                                });
+                                                            }}
+                                                            rows={3}
+                                                            placeholder="Edit comment..."
+                                                        />
+                                                    </div>
+                                                )
+                                            )
+                                        )}
+                                    </div>
+
+                                    <div className="border-2 border-dashed border-border rounded-lg p-4 bg-card">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <img
+                                                    src={user?.avatarurl}
+                                                    alt={user?.fullname}
+                                                    className="w-8 h-8 rounded-full"
+                                                />
+                                                <div className="font-semibold text-foreground">
+                                                    {user?.fullname}
+                                                </div>
+                                            </div>
+
+                                            <textarea
+                                                className="w-full p-3 text-sm border border-gray-200 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                placeholder="Share your thoughts..."
+                                                value={newComment.content}
+                                                onChange={(e) =>
+                                                    setNewComment({
+                                                        content: e.target.value,
+                                                    })
+                                                }
+                                                rows={3}
+                                            />
+
+                                            <div className="flex justify-between items-center">
+                                                <div className="text-xs text-gray-500">
+                                                    Press Ctrl+Enter to submit
+                                                </div>
+                                                <Button
+                                                    className="bg-blue-600 hover:bg-blue-700"
+                                                    disabled={
+                                                        !newComment.content.trim()
+                                                    }
+                                                    onClick={() => {
+                                                        if (
+                                                            newComment.content.trim() &&
+                                                            user
+                                                        ) {
+                                                            const comment = {
+                                                                id: Date.now(),
+                                                                task_id:
+                                                                    targetTask.id,
+                                                                author: {
+                                                                    id: user.id,
+                                                                    fullname:
+                                                                        user.fullname,
+                                                                    avatarurl:
+                                                                        user.avatarUrl ||
+                                                                        "",
+                                                                    email: user.email,
+                                                                },
+                                                                text: newComment.content,
+                                                                timestamp:
+                                                                    new Date().toLocaleString(),
+                                                            };
+                                                            setTargetTask({
+                                                                ...targetTask,
+                                                                comments: [
+                                                                    ...(targetTask.comments ||
+                                                                        []),
+                                                                    comment,
+                                                                ],
+                                                            });
+                                                            setNewComment({
+                                                                content: "",
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <Plus className="w-4 h-4 mr-1" />
+                                                    Add Comment
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );
