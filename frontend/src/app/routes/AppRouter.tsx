@@ -16,6 +16,7 @@ import SidebarLayout from "../layout/SidebarLayout";
 import CreateBoard from "@/pages/CreateBoard/ui";
 import Board from "@/pages/Board/ui";
 import NotFoundPage from "./NotFound/ui";
+import InviteConfirmation from "@/pages/InviteConfirmation/ui";
 
 const router = createBrowserRouter([
     {
@@ -46,6 +47,10 @@ const router = createBrowserRouter([
                                 element: <Boards />,
                             },
                         ],
+                    },
+                    {
+                        path: "invite-confirmation",
+                        element: <InviteConfirmation />,
                     },
                     {
                         path: "create-board",

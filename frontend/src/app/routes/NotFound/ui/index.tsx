@@ -1,6 +1,6 @@
 const NotFoundPage = () => {
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="flex-1 bg-background flex items-center justify-center px-4">
             <div className="text-center">
                 <h1 className="text-9xl font-bold text-foreground mb-4">404</h1>
                 <h2 className="text-2xl font-semibold text-foreground/50 mb-4">

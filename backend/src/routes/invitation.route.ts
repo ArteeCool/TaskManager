@@ -8,6 +8,6 @@ import {
 const router = Router();
 
 router.post("/send-invite/:id", authMiddleware, sendInvite);
-router.get("/accept-invite/:id", authMiddleware, acceptInvite);
+router.get("/accept-invite/", authMiddleware, acceptInvite);
 
 export default router;

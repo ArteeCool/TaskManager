@@ -134,6 +134,7 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
             INNER JOIN board_users bu ON bu.board_id = b.id
             WHERE bu.user_id = $1 AND b.id = $2;
         `;
+
         const boardResult = await queryDB(boardQuery, [userId, boardId]);
 
         if (!boardResult?.rows.length) {
