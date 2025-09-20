@@ -1,13 +1,13 @@
-import { useContext, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, Outlet } from "react-router";
-import { AuthContext } from "@/features/auth/model/context";
 import { useQuery } from "@tanstack/react-query";
 import { useLoader } from "@/features/loader/lib/useLoader";
 import { getCurrentUser } from "@/features/auth/api/getUser";
 import { toast } from "sonner";
+import { useUser } from "@/features/auth/lib/useUser";
 
 const ProtectedRoute = () => {
-    const { user } = useContext(AuthContext);
+    const { user } = useUser();
     const navigate = useNavigate();
     const { startLoading, finishLoading } = useLoader();
 
@@ -34,11 +34,11 @@ const ProtectedRoute = () => {
     }, [isLoading, user, navigate]);
 
     useEffect(() => {
-        if (user?.confirmation_key) {
+        if (user && user.confirmation_key) {
             toast.success("Please confirm your email.");
             navigate("/");
         }
-    }, [navigate, user?.confirmation_key]);
+    }, [navigate, user, user?.confirmation_key]);
 
     if (isLoading || !user) return null;
 

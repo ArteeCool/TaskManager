@@ -21,5 +21,7 @@ export const useGetBoardData = (boardId: number) => {
                 throw new Error("Get tasks failed");
             }
         },
+        retry: false,
+        refetchOnWindowFocus: true,
     });
 };

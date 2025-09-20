@@ -42,3 +42,13 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS board_invitations (
+  id SERIAL PRIMARY KEY,
+  board_id INT NOT NULL,
+  inviter_id INT NOT NULL,
+  invitee_email TEXT NOT NULL,
+  role TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT now(),
+  expires_at TIMESTAMP DEFAULT now() + interval '7 days'
+);

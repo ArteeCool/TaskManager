@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { BoardResponse } from "@/features/boards/model/types";
 import { toast } from "sonner";
+import { useInviteMember } from "@/features/boards/lib/useInviteMember";
 
 const BoardMembersModal = ({
     isOpen,
@@ -26,35 +27,27 @@ const BoardMembersModal = ({
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"members" | "invite">("members");
 
+    const inviteMutation = useInviteMember();
+
     const handleInvite = async () => {
         if (!inviteEmail.trim()) return;
 
         setLoading(true);
         try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL || ""}/api/boards/${
-                    boardData.id
-                }/invite`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        email: inviteEmail.trim(),
-                        role: inviteRole,
-                    }),
-                }
-            );
+            const result = await inviteMutation.mutateAsync({
+                boardData,
+                inviteEmail,
+                inviteRole,
+            });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (result.status === 200) {
                 setInviteEmail("");
                 setActiveTab("members");
-                // Show success message
-                toast.success(data.message || "Invitation sent successfully!");
+                toast.success(
+                    result.data.message || "Invitation sent successfully!"
+                );
             } else {
-                toast.error(data.message || "Failed to send invitation");
+                toast.error(result.data.message || "Failed to send invitation");
             }
         } catch (error) {
             console.error("Failed to invite user:", error);
@@ -82,7 +75,7 @@ const BoardMembersModal = ({
                 fetchMembers(); // Refresh members list
             } else {
                 const data = await response.json();
-                alert (data.message || "Failed to remove member");
+                alert(data.message || "Failed to remove member");
             }
         } catch (error) {
             console.error("Failed to remove member:", error);

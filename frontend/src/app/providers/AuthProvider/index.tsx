@@ -22,7 +22,7 @@ const AuthProvider = ({ children }: AuthProviderProps) => {
         queryKey: ["user"],
         queryFn: getCurrentUser,
         retry: false,
-        refetchOnWindowFocus: false,
+        refetchOnWindowFocus: true,
         refetchOnReconnect: false,
     });
 

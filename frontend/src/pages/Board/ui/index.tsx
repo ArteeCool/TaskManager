@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, GripVertical, Check, X } from "lucide-react";
 import { useGetBoardData } from "@/features/boards/lib/useBoardData";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import type {
     BoardResponse,
     BoardWithListsResponse,
@@ -225,7 +225,7 @@ const useListDragAndDrop = (
 
             setLists({ ...board, lists: newLists });
         },
-        [board.lists, draggedList, setLists, updateListMutation]
+        [board, draggedList, setLists, updateListMutation]
     );
 
     const handleListDragOver = useCallback(
@@ -605,7 +605,9 @@ const AddListSection = ({
 
 const Board = () => {
     const boardId = Number(useParams().id);
-    const { data: boardData } = useGetBoardData(boardId);
+    const { data: boardData, isError } = useGetBoardData(boardId);
+
+    const navigate = useNavigate();
 
     const [currentBoardData, setCurrentBoardData] =
         useState<BoardWithListsResponse>({
@@ -624,6 +626,10 @@ const Board = () => {
     const editListInputRef = useRef<HTMLInputElement>(null);
     const editTaskInputRef = useRef<HTMLInputElement>(null);
     const newTaskInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isError) navigate("/404");
+    }, [boardData, isError, navigate]);
 
     useEffect(() => {
         if (boardData) setCurrentBoardData(boardData);

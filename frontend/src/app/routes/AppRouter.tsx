@@ -15,6 +15,7 @@ import {
 import SidebarLayout from "../layout/SidebarLayout";
 import CreateBoard from "@/pages/CreateBoard/ui";
 import Board from "@/pages/Board/ui";
+import NotFoundPage from "./NotFound/ui";
 
 const router = createBrowserRouter([
     {
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
         element: <Layout />,
         children: [
             { index: true, element: <Home /> },
+            { path: "*", element: <NotFoundPage /> },
             { path: "log-in", element: <LogIn /> },
             { path: "sign-up", element: <SignUp /> },
             { path: "profile/:id", element: <Profile /> },
