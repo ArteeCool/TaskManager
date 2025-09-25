@@ -17,6 +17,17 @@ CREATE TABLE IF NOT EXISTS boards (
     last_updated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS board_invitations (
+  id SERIAL PRIMARY KEY,
+  board_id INT NOT NULL,
+  inviter_id INT NOT NULL,
+  invitee_email TEXT NOT NULL,
+  role TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT now(),
+  expires_at TIMESTAMP DEFAULT now() + interval '7 days'
+);
+
 CREATE TABLE IF NOT EXISTS board_users (
     user_id INT NOT NULL,
     board_id INT NOT NULL,
@@ -42,15 +53,12 @@ CREATE TABLE IF NOT EXISTS tasks (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS board_invitations (
-  id SERIAL PRIMARY KEY,
-  board_id INT NOT NULL,
-  inviter_id INT NOT NULL,
-  invitee_email TEXT NOT NULL,
-  role TEXT NOT NULL,
-  token TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT now(),
-  expires_at TIMESTAMP DEFAULT now() + interval '7 days'
+CREATE TABLE IF NOT EXISTS comments (
+	id SERIAL PRIMARY KEY,
+    task_id INT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS task_assignees (

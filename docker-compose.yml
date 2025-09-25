@@ -20,10 +20,8 @@ services:
       POSTGRES_DB: task_manager
     ports:
       - "5432:5432"
-    tmpfs:
-      - /var/lib/postgresql/data       # Database in RAM (wiped on restart)
     volumes:
-      - ./db_init:/docker-entrypoint-initdb.d  # SQL scripts
+      - database_data:/var/lib/postgresql/data
     restart: always
 
   frontend:

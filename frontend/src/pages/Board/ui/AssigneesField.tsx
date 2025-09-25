@@ -7,15 +7,17 @@ import type {
     TaskRequest,
 } from "@/features/boards/model/types";
 
+interface AssigneesFieldProps {
+    targetTask: Task;
+    boardData: BoardWithListsResponse;
+    handleUpdateTask: (taskId: number, payload: Partial<TaskRequest>) => void;
+}
+
 const AssigneesField = ({
     targetTask,
     boardData,
     handleUpdateTask,
-}: {
-    targetTask: Task;
-    boardData: BoardWithListsResponse;
-    handleUpdateTask: (taskId: number, payload: Partial<TaskRequest>) => void;
-}) => {
+}: AssigneesFieldProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -76,16 +78,18 @@ const AssigneesField = ({
 
         handleUpdateTask(targetTask.id, {
             assignees: newAssignees,
+            position: targetTask.position,
         });
     };
 
     const handleRemoveAssignee = (assigneeId: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        const newAssignees = currentAssignees.filter(
-            (assignee) => assignee.id !== assigneeId
-        );
+        const newAssignees = currentAssignees
+            .filter((assignee) => assignee.id !== assigneeId)
+            .map((assignee) => assignee.id);
         handleUpdateTask(targetTask.id, {
-            assignees: newAssignees.map((assignee) => assignee.id),
+            assignees: newAssignees,
+            position: targetTask.position,
         });
     };
 

@@ -1,14 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-    Users,
-    UserPlus,
-    X,
-    Settings,
-    Mail,
-    Crown,
-    Shield,
-    Eye,
-} from "lucide-react";
+import { useState } from "react";
+import { Users, UserPlus, X, Settings, Mail } from "lucide-react";
 import type { BoardResponse } from "@/features/boards/model/types";
 import { toast } from "sonner";
 import { useInviteMember } from "@/features/boards/lib/useInviteMember";
@@ -57,7 +48,7 @@ const BoardMembersModal = ({
         }
     };
 
-    const handleRemoveMember = async (memberId: number) => {
+    /*     const handleRemoveMember = async (memberId: number) => {
         if (!confirm("Are you sure you want to remove this member?")) return;
 
         try {
@@ -132,7 +123,7 @@ const BoardMembersModal = ({
             default:
                 return "bg-gray-100 text-gray-800 border-gray-200";
         }
-    };
+    }; */
 
     if (!isOpen) return null;
 

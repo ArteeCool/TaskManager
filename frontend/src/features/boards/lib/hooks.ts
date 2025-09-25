@@ -1,15 +1,14 @@
 // hooks.ts
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import type { ListWithTasks, Task, TaskRequest } from "../model/types";
+import type { ListRequest, Task, TaskRequest } from "../model/types";
+import { queryClient } from "@/app/providers/QueryProvider/query/queryClient";
 
-// Create a reusable axios instance with default config
 const apiClient = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
     withCredentials: true,
 });
 
-// Generic error handler
 const handleApiError = (error: unknown, defaultMessage: string) => {
     if (axios.isAxiosError(error)) {
         throw new Error(
@@ -20,13 +19,11 @@ const handleApiError = (error: unknown, defaultMessage: string) => {
 };
 
 export const useCreateList = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (data: { board_id: number; title: string }) => {
             try {
                 const response = await apiClient.post(
-                    "/api/lists/create",
+                    `${import.meta.env.VITE_API_URL || ""}/api/lists/create`,
                     data
                 );
                 return response.data;
@@ -41,13 +38,13 @@ export const useCreateList = () => {
 };
 
 export const useUpdateList = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (list: Partial<ListWithTasks> & { id: number }) => {
+        mutationFn: async (list: Partial<ListRequest>) => {
             try {
                 const response = await apiClient.put(
-                    `/api/lists/update/${list.id}`,
+                    `${import.meta.env.VITE_API_URL || ""}/api/lists/update/${
+                        list.id
+                    }`,
                     list
                 );
                 return response.data;
@@ -62,13 +59,13 @@ export const useUpdateList = () => {
 };
 
 export const useDeleteList = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (listId: number) => {
             try {
                 const response = await apiClient.delete(
-                    `/api/lists/delete/${listId}`
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/lists/delete/${listId}`
                 );
                 return response.data;
             } catch (error) {
@@ -82,13 +79,11 @@ export const useDeleteList = () => {
 };
 
 export const useCreateTask = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (data: Omit<Task, "id"> & { list_id: number }) => {
             try {
                 const response = await apiClient.post(
-                    "/api/tasks/create",
+                    `${import.meta.env.VITE_API_URL || ""}/api/tasks/create`,
                     data
                 );
                 return response.data;
@@ -103,13 +98,13 @@ export const useCreateTask = () => {
 };
 
 export const useUpdateTask = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (data: Partial<TaskRequest>) => {
             try {
                 const response = await apiClient.put(
-                    `/api/tasks/update/${data.id}`,
+                    `${import.meta.env.VITE_API_URL || ""}/api/tasks/update/${
+                        data.id
+                    }`,
                     data
                 );
                 return response.data;
@@ -124,14 +119,16 @@ export const useUpdateTask = () => {
 };
 
 export const useBatchUpdateTasks = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
-        mutationFn: async (tasks: Array<Partial<Task> & { id: number }>) => {
+        mutationFn: async (
+            tasks: (Partial<TaskRequest> & { id: number })[]
+        ) => {
             try {
                 const response = await apiClient.put(
-                    "/api/tasks/batch-update",
-                    { tasks }
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/tasks/batch-update`,
+                    tasks
                 );
                 return response.data;
             } catch (error) {
@@ -145,13 +142,13 @@ export const useBatchUpdateTasks = () => {
 };
 
 export const useDeleteTask = () => {
-    const queryClient = useQueryClient();
-
     return useMutation({
         mutationFn: async (taskId: number) => {
             try {
                 const response = await apiClient.delete(
-                    `/api/tasks/delete/${taskId}`
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/tasks/delete/${taskId}`
                 );
                 return response.data;
             } catch (error) {
@@ -160,6 +157,77 @@ export const useDeleteTask = () => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        },
+    });
+};
+
+export const useCreateComment = () => {
+    return useMutation({
+        mutationFn: async (data: { taskId: number; content: string }) => {
+            try {
+                const response = await apiClient.post(
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/tasks/comments/create`,
+                    data,
+                    { withCredentials: true }
+                );
+                return response.data;
+            } catch (error) {
+                handleApiError(error, "Failed to create comment");
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({
+                queryKey: ["comments", variables.taskId],
+            });
+        },
+    });
+};
+
+export const useUpdateComment = () => {
+    return useMutation({
+        mutationFn: async (data: { commentId: number; content: string }) => {
+            try {
+                const response = await apiClient.put(
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/tasks/comments/update/${data.commentId}`,
+                    data,
+                    { withCredentials: true }
+                );
+                return response.data;
+            } catch (error) {
+                handleApiError(error, "Failed to update comment");
+            }
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: ["comments"] });
+            queryClient.invalidateQueries({
+                queryKey: ["comment", variables.commentId],
+            });
+        },
+    });
+};
+
+export const useDeleteComment = () => {
+    return useMutation({
+        mutationFn: async (commentId: number) => {
+            try {
+                const response = await apiClient.delete(
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/tasks/comments/delete/${commentId}`,
+                    { withCredentials: true }
+                );
+                return response.data;
+            } catch (error) {
+                handleApiError(error, "Failed to delete comment");
+            }
+        },
+        onSuccess: (_, commentId) => {
+            queryClient.invalidateQueries({ queryKey: ["comments"] });
+            queryClient.invalidateQueries({ queryKey: ["comment", commentId] });
         },
     });
 };

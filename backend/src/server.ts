@@ -13,6 +13,7 @@ import boardsRouter from "./routes/boards.route.ts";
 import tasksRouter from "./routes/tasks.route.ts";
 import listsRouter from "./routes/lists.route.ts";
 import invitationController from "./routes/invitation.route.ts";
+import tasksCommentsRouter from "./routes/task.comments.route.ts";
 
 import { initSocket } from "./websockets/board.socket.ts";
 
@@ -49,6 +50,7 @@ app.use("/api/boards/", boardsRouter);
 app.use("/api/tasks/", tasksRouter);
 app.use("/api/lists/", listsRouter);
 app.use("/api/board-invites/", invitationController);
+app.use("/api/tasks/comments", tasksCommentsRouter);
 
 initSocket(server);
 

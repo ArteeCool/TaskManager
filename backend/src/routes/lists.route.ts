@@ -2,7 +2,6 @@ import { Router } from "express";
 import { authMiddleware } from "../middleware/auth.middleware.ts";
 import {
     createList,
-    getBoardData,
     updateList,
     deleteList,
 } from "../controllers/lists.controller.ts";

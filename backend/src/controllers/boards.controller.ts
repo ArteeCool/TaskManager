@@ -174,6 +174,14 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
                     avatarurl: string;
                 }>
             > = {};
+            let commentsMap:
+                | {
+                      id: number;
+                      task_id: number;
+                      content: string;
+                      created_at: string;
+                  }[]
+                | undefined;
             if (taskIds.length > 0) {
                 const assigneesRes = await queryDB(
                     `
@@ -189,6 +197,24 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
                     `,
                     [taskIds]
                 );
+                const commentsRes = await queryDB(
+                    `
+                    SELECT 
+                        c.id,
+                        c.task_id,
+                        c.content,
+                        c.created_at,
+                        u.id as user_id,
+                        u.fullname,
+                        u.email,
+                        u.avatarurl
+                    FROM comments c
+                    LEFT JOIN users u ON u.id = c.user_id
+                    WHERE c.task_id = ANY($1::int[])
+                    `,
+                    [taskIds]
+                );
+
                 assigneesRes?.rows.forEach((row) => {
                     if (!assigneesMap[row.task_id])
                         assigneesMap[row.task_id] = [];
@@ -199,11 +225,27 @@ export const getBoard = async (req: MutatedRequest, res: Response) => {
                         avatarurl: row.avatarurl,
                     });
                 });
+
+                commentsMap = commentsRes?.rows.map((c) => ({
+                    id: c.id,
+                    task_id: c.task_id,
+                    content: c.content,
+                    created_at: c.created_at,
+                    author: {
+                        id: c.user_id,
+                        fullname: c.fullname,
+                        email: c.email,
+                        avatarurl: c.avatarurl,
+                    },
+                }));
             }
 
             tasks = tasks.map((task) => ({
                 ...task,
                 assignees: assigneesMap[task.id] || [],
+                comments: (commentsMap ?? []).filter(
+                    (c) => c.task_id === task.id
+                ),
             }));
         }
 

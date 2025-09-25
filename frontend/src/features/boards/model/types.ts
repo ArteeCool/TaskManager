@@ -45,11 +45,12 @@ export interface Member {
     email: string;
 }
 
-interface Comment {
+export interface Comment {
     id: number;
     task_id: number;
     author: Member;
-    text: string;
+    content: string;
+    created_at: string;
 }
 
 export interface ListWithTasks {
@@ -64,4 +65,10 @@ export interface BoardWithListsResponse {
     board: BoardResponse;
     lists: ListWithTasks[];
     members: Member[];
+}
+
+export interface ListRequest {
+    title: string;
+    position?: number;
+    id: number;
 }

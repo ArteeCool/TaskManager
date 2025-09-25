@@ -29,9 +29,15 @@ export const createTask = async (req: MutatedRequest, res: Response) => {
         if (!userBoardRes?.rows.length)
             return res.status(403).json({ message: "Not your board" });
 
+        const posRes = await queryDB(
+            "SELECT COALESCE(MAX(position), 0) + 1 AS new_pos FROM tasks WHERE list_id = $1",
+            [list_id]
+        );
+        const position = posRes?.rows[0].new_pos;
+
         const result = await queryDB(
-            "INSERT INTO tasks (title, list_id) VALUES ($1, $2) RETURNING *;",
-            [title, list_id]
+            "INSERT INTO tasks (title, list_id, position) VALUES ($1, $2, $3) RETURNING *;",
+            [title, list_id, position]
         );
 
         io.to(`board_${boardId}`).emit("taskCreated", result?.rows[0]);
@@ -55,11 +61,11 @@ export const updateTaskBatch = async (req: MutatedRequest, res: Response) => {
             list_id?: number;
             position?: number;
             assignees?: number[];
-        }[] = req.body.tasks;
+        }[] = req.body;
+
+        tasks.forEach((t) => console.log(t));
 
         if (!userId) return res.status(401).json({ message: "Unauthorized" });
-        if (!Array.isArray(tasks) || tasks.length === 0)
-            return res.status(400).json({ message: "No tasks to update" });
 
         const updatedTasks: any[] = [];
 
@@ -67,17 +73,21 @@ export const updateTaskBatch = async (req: MutatedRequest, res: Response) => {
             const taskId = task.id;
 
             const taskRes = await queryDB(
-                "SELECT list_id FROM tasks WHERE id = $1",
+                "SELECT list_id, position FROM tasks WHERE id = $1",
                 [taskId]
             );
-            const currentListId = taskRes?.rows[0]?.list_id;
-            if (!currentListId) continue;
+            const currentTask = taskRes?.rows[0];
+            if (!currentTask) continue;
+
+            const newListId = task.list_id ?? currentTask.list_id;
+            const newPosition = task.position;
 
             const boardRes = await queryDB(
                 "SELECT board_id FROM lists WHERE id = $1",
-                [task.list_id || currentListId]
+                [newListId]
             );
             const boardId = boardRes?.rows[0]?.board_id;
+            if (!boardId) continue;
 
             const userBoardRes = await queryDB(
                 "SELECT board_id FROM board_users WHERE user_id = $1 AND board_id = $2",
@@ -85,14 +95,32 @@ export const updateTaskBatch = async (req: MutatedRequest, res: Response) => {
             );
             if (!userBoardRes?.rows.length) continue;
 
-            await queryDB(
-                `UPDATE tasks SET
-                    title = COALESCE($1, title),
-                    list_id = COALESCE($2, list_id),
-                    position = COALESCE($3, position)
-                 WHERE id = $4`,
-                [task.title, task.list_id, task.position, taskId]
-            );
+            const updates: string[] = [];
+            const values: any[] = [];
+            let idx = 1;
+
+            if (task.title !== undefined) {
+                updates.push(`title = $${idx++}`);
+                values.push(task.title);
+            }
+
+            if (task.list_id !== undefined) {
+                updates.push(`list_id = $${idx++}`);
+                values.push(task.list_id);
+            }
+
+            if (newPosition !== undefined) {
+                updates.push(`position = $${idx++}`);
+                values.push(newPosition);
+            }
+
+            if (updates.length > 0) {
+                values.push(taskId);
+                await queryDB(
+                    `UPDATE tasks SET ${updates.join(", ")} WHERE id = $${idx}`,
+                    values
+                );
+            }
 
             if (Array.isArray(task.assignees)) {
                 await queryDB("DELETE FROM task_assignees WHERE task_id = $1", [
@@ -107,14 +135,11 @@ export const updateTaskBatch = async (req: MutatedRequest, res: Response) => {
             }
 
             const fullTaskRes = await queryDB(
-                `SELECT t.*
-                   FROM tasks t
-                  WHERE t.id = $1`,
+                "SELECT * FROM tasks WHERE id = $1",
                 [taskId]
             );
-
             const assigneesRes = await queryDB(
-                `SELECT user_id FROM task_assignees WHERE task_id = $1`,
+                "SELECT user_id FROM task_assignees WHERE task_id = $1",
                 [taskId]
             );
             const assignees = assigneesRes?.rows.map((r) => r.user_id) || [];
@@ -184,51 +209,3 @@ export const deleteTask = async (req: MutatedRequest, res: Response) => {
         res.status(500).json({ message: "Internal server error", error });
     }
 };
-/* 
-export const addAssignee = async (req: MutatedRequest, res: Response) => {
-    try {
-        const userId = req.user?.id;
-        const taskId = Number(req.params.id);
-        const assigneeId = Number(req.body.assigneeId);
-
-        if (!userId) return res.status(401).json({ message: "Unauthorized" });
-
-        const taskRes = await queryDB(
-            "SELECT list_id FROM tasks WHERE id = $1",
-            [taskId]
-        );
-
-        const listId = taskRes?.rows[0]?.list_id;
-
-        if (!listId) return res.status(404).json({ message: "Task not found" });
-
-        const boardRes = await queryDB(
-            "SELECT board_id FROM lists WHERE id = $1",
-            [listId]
-        );
-        const boardId = boardRes?.rows[0]?.board_id;
-
-        const userBoardRes = await queryDB(
-            "SELECT board_id FROM board_users WHERE user_id = $1 AND board_id = $2",
-            [userId, boardId]
-        );
-        if (!userBoardRes?.rows.length)
-            return res.status(403).json({ message: "Not your board" });
-
-        const result = await queryDB(
-            "INSERT INTO task_assignees (task_id, assignee_id) VALUES ($1, $2) RETURNING *;",
-            [taskId, assigneeId]
-        );
-
-        io.to(`board_${boardId}`).emit("taskUpdated", result?.rows[0]);
-
-        res.status(200).json({
-            message: "Assignee added",
-            task: result?.rows[0],
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal server error", error });
-    }
-};
- */
