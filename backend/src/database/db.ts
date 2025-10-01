@@ -1,8 +1,8 @@
 import pg from "pg";
 
-let client: pg.Pool | null = null;
+let pool: pg.Pool;
 
-export const dbInit = async () => {
+export const dbInit = () => {
     const dbConnectionData = {
         host: process.env.POSTGRES_HOST,
         port: Number(process.env.POSTGRES_PORT) || 5432,
@@ -11,33 +11,27 @@ export const dbInit = async () => {
         database: process.env.POSTGRES_DB,
     };
 
-    client = new pg.Pool(dbConnectionData);
+    pool = new pg.Pool(dbConnectionData);
+
+    pool.on("error", (err, client) => {
+        console.error("Unexpected Postgres pool error:", err);
+    });
 };
 
-export const connectDB = async () => {
-    if (client) {
-        try {
-            await client.connect();
-            console.log("Database connected");
-        } catch (error) {
-            console.log(error);
-        }
+export const queryDB = async (query: string, values?: any) => {
+    if (!pool) throw new Error("Database pool not initialized");
+
+    try {
+        return await pool.query(query, values);
+    } catch (err) {
+        console.error("Query error:", err);
+        throw err;
     }
 };
 
 export const disconnectDB = async () => {
-    if (client) {
-        try {
-            await client.end();
-            console.log("Database disconnected");
-        } catch (error) {
-            console.log(error);
-        }
-    }
-};
-
-export const queryDB = async (query: string, values?: any) => {
-    if (client) {
-        return client.query(query, values);
+    if (pool) {
+        await pool.end();
+        console.log("Database pool closed");
     }
 };
