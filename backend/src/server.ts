@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import rateLimit from "express-rate-limit";
-import { connectDB, dbInit, disconnectDB } from "./database/db.ts";
+import { dbInit, disconnectDB } from "./database/db.ts";
 
 import authRouter from "./routes/auth.route.ts";
 import profileRouter from "./routes/profile.route.ts";
@@ -58,7 +58,6 @@ server
     .listen(PORT as number, "0.0.0.0", async () => {
         console.log(`Server started on port ${PORT}`);
         await dbInit();
-        await connectDB();
     })
     .on("close", () => {
         disconnectDB();
