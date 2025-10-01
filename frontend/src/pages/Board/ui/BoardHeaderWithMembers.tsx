@@ -1,23 +1,31 @@
 import { useState } from "react";
-import { Users, UserPlus, X, Settings, Mail } from "lucide-react";
-import type { BoardResponse } from "@/features/boards/model/types";
+import { Users, UserPlus, X, Mail } from "lucide-react";
+import type { BoardInvite, BoardResponse } from "@/features/boards/model/types";
+import type { User } from "@/features/auth/model/types";
 import { toast } from "sonner";
 import { useInviteMember } from "@/features/boards/lib/useInviteMember";
+import { useGetCurrentInvites } from "@/features/boards/lib/hooks";
+import { Crown, Shield, Eye } from "lucide-react";
+
+interface BoardMembersModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    members: User[];
+    boardData: BoardResponse;
+}
 
 const BoardMembersModal = ({
     isOpen,
     onClose,
+    members,
     boardData,
-}: {
-    isOpen: boolean;
-    onClose: () => void;
-    boardData: BoardResponse;
-}) => {
+}: BoardMembersModalProps) => {
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteRole, setInviteRole] = useState<"member" | "admin">("member");
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<"members" | "invite">("members");
 
+    const { data: currentInvites } = useGetCurrentInvites(boardData.id);
     const inviteMutation = useInviteMember();
 
     const handleInvite = async () => {
@@ -48,84 +56,84 @@ const BoardMembersModal = ({
         }
     };
 
-    /*     const handleRemoveMember = async (memberId: number) => {
-        if (!confirm("Are you sure you want to remove this member?")) return;
+    const getRoleIcon = (roles: string[]) => {
+        if (roles?.includes("owner"))
+            return <Crown size={16} className="text-yellow-600" />;
 
-        try {
-            const response = await fetch(
-                `${
-                    import.meta.env.VITE_API_URL || ""
-                }/api/boards/${boardId}/members/${memberId}`,
-                {
-                    method: "DELETE",
-                    credentials: "include",
-                }
-            );
+        if (roles?.includes("admin"))
+            return <Shield size={16} className="text-blue-600" />;
 
-            if (response.ok) {
-                fetchMembers(); // Refresh members list
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to remove member");
-            }
-        } catch (error) {
-            console.error("Failed to remove member:", error);
-            alert("Failed to remove member");
-        }
+        return <Eye size={16} className="text-gray-600" />;
     };
 
-    const handleRoleChange = async (
-        memberId: number,
-        newRole: "member" | "admin"
-    ) => {
-        try {
-            const response = await fetch(
-                `${
-                    import.meta.env.VITE_API_URL || ""
-                }/api/boards/${boardId}/members/${memberId}/role`,
-                {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify({ role: newRole }),
-                }
-            );
-
-            if (response.ok) {
-                fetchMembers();
-            } else {
-                const data = await response.json();
-                alert(data.message || "Failed to update member role");
-            }
-        } catch (error) {
-            console.error("Failed to update member role:", error);
-            alert("Failed to update member role");
+    const getRoleColor = (roles: string[]) => {
+        if (roles?.includes("owner")) {
+            return "bg-yellow-100 text-yellow-800 border-yellow-200";
         }
+        if (roles?.includes("admin")) {
+            return "bg-blue-100 text-blue-800 border-blue-200";
+        }
+        return "bg-gray-100 text-gray-800 border-gray-200";
     };
-
-    const getRoleIcon = (role: string) => {
-        switch (role) {
-            case "owner":
-                return <Crown size={16} className="text-yellow-600" />;
-            case "admin":
-                return <Shield size={16} className="text-blue-600" />;
-            default:
-                return <Eye size={16} className="text-gray-600" />;
-        }
-    };
-
-    const getRoleColor = (role: string) => {
-        switch (role) {
-            case "owner":
-                return "bg-yellow-100 text-yellow-800 border-yellow-200";
-            case "admin":
-                return "bg-blue-100 text-blue-800 border-blue-200";
-            default:
-                return "bg-gray-100 text-gray-800 border-gray-200";
-        }
-    }; */
 
     if (!isOpen) return null;
+
+    const MemberItem = ({ member }: { member: User }) => (
+        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border hover:bg-muted/50 transition-colors">
+            <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                    {member.avatarurl ? (
+                        <img
+                            src={member.avatarurl}
+                            alt={member.fullname || member.email}
+                            className="w-full h-full rounded-full object-cover"
+                        />
+                    ) : (
+                        <span className="text-sm font-medium text-primary">
+                            {member.fullname || member.email}
+                        </span>
+                    )}
+                </div>
+                <div>
+                    <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground">
+                            {member.fullname || member.email}
+                        </p>
+                        {member.fullname && (
+                            <span className="text-sm text-muted-foreground">
+                                {member.email}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border ${getRoleColor(
+                        member.roles
+                    )}`}
+                >
+                    {getRoleIcon(member.roles)}
+                    {member?.roles?.includes("owner")
+                        ? "Owner"
+                        : member?.roles?.length > 0
+                        ? member?.roles[0]?.charAt(0).toUpperCase() +
+                          member?.roles[0]?.slice(1)
+                        : ""}
+                </span>
+            </div>
+        </div>
+    );
+
+    const InviteItem = ({ invite }: { invite: BoardInvite }) => (
+        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border hover:bg-muted/50 transition-colors">
+            <p className="text-foreground">{invite.invitee_email}</p>
+            <span className="text-sm text-muted-foreground">
+                Invited ({invite.role})
+            </span>
+        </div>
+    );
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -164,7 +172,7 @@ const BoardMembersModal = ({
                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                             }`}
                         >
-                            Members {boardData.member_count || 0}
+                            Members {members?.length || 0}
                         </button>
                         <button
                             onClick={() => setActiveTab("invite")}
@@ -181,124 +189,41 @@ const BoardMembersModal = ({
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="p-6 overflow-y-auto h-[calc(90vh-200px)]">
                     {activeTab === "members" && (
-                        <div className="space-y-3">
-                            {/* {members.length === 0 ? (
+                        <div className="space-y-3 h-full">
+                            {members?.length === 0 &&
+                            currentInvites?.length === 0 ? (
                                 <div className="text-center py-8 text-muted-foreground">
                                     <Users
                                         size={48}
                                         className="mx-auto mb-3 opacity-50"
                                     />
-                                    <p>No members found</p>
+                                    <p>No members or invites found</p>
                                 </div>
                             ) : (
-                                members.map((member) => (
-                                    <div
-                                        key={member.id}
-                                        className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-border hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                                                {member.avatar ? (
-                                                    <img
-                                                        src={member.avatar}
-                                                        alt={
-                                                            member.name ||
-                                                            member.email
-                                                        }
-                                                        className="w-full h-full rounded-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm font-medium text-primary">
-                                                        {(
-                                                            member.name ||
-                                                            member.email
-                                                        )
-                                                            .charAt(0)
-                                                            .toUpperCase()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="font-medium text-foreground">
-                                                        {member.name ||
-                                                            member.email}
-                                                    </p>
-                                                    {member.name && (
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {member.email}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Joined{" "}
-                                                    {new Date(
-                                                        member.joinedAt
-                                                    ).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center gap-2">
-                                                {member.role !== "owner" ? (
-                                                    <select
-                                                        value={member.role}
-                                                        onChange={(e) =>
-                                                            handleRoleChange(
-                                                                member.id,
-                                                                e.target
-                                                                    .value as
-                                                                    | "member"
-                                                                    | "admin"
-                                                            )
-                                                        }
-                                                        className="text-xs px-2 py-1 rounded-lg border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                                    >
-                                                        <option value="member">
-                                                            Member
-                                                        </option>
-                                                        <option value="admin">
-                                                            Admin
-                                                        </option>
-                                                    </select>
-                                                ) : (
-                                                    <span
-                                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border ${getRoleColor(
-                                                            member.role
-                                                        )}`}
-                                                    >
-                                                        {getRoleIcon(
-                                                            member.role
-                                                        )}
-                                                        Owner
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {member.role !== "owner" && (
-                                                <button
-                                                    onClick={() =>
-                                                        handleRemoveMember(
-                                                            member.id
-                                                        )
-                                                    }
-                                                    className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                                    title="Remove member"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )} */}
+                                <>
+                                    {members?.map((member: User) => (
+                                        <MemberItem
+                                            key={member.id}
+                                            member={member}
+                                        />
+                                    ))}
+                                    {currentInvites?.map(
+                                        (invite: BoardInvite) => (
+                                            <InviteItem
+                                                key={invite.id}
+                                                invite={invite}
+                                            />
+                                        )
+                                    )}
+                                </>
+                            )}
                         </div>
                     )}
 
                     {activeTab === "invite" && (
-                        <div className="space-y-6">
+                        <div className="space-y-6 h-full">
                             <div className="text-center">
                                 <Mail
                                     size={48}
@@ -373,57 +298,4 @@ const BoardMembersModal = ({
     );
 };
 
-const BoardHeaderWithMembers = ({
-    boardData,
-    title,
-    description,
-}: {
-    boardData: BoardResponse;
-    title: string;
-    description: string;
-}) => {
-    const [showMembersModal, setShowMembersModal] = useState(false);
-
-    return (
-        <>
-            <div className="mb-6 flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-foreground mb-2">
-                        {title}
-                    </h1>
-                    <p className="text-muted-foreground">{description}</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setShowMembersModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-muted rounded-xl border border-border transition-all hover:shadow-md group"
-                    >
-                        <Users
-                            size={20}
-                            className="text-primary group-hover:scale-110 transition-transform"
-                        />
-                        <span className="font-medium text-foreground">
-                            {boardData.member_count}{" "}
-                            {boardData.member_count === 1
-                                ? "Member"
-                                : "Members"}
-                        </span>
-                        <Settings
-                            size={16}
-                            className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                        />
-                    </button>
-                </div>
-            </div>
-
-            <BoardMembersModal
-                isOpen={showMembersModal}
-                onClose={() => setShowMembersModal(false)}
-                boardData={boardData}
-            />
-        </>
-    );
-};
-
-export { BoardMembersModal, BoardHeaderWithMembers };
+export default BoardMembersModal;

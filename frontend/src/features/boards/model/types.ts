@@ -72,3 +72,14 @@ export interface ListRequest {
     position?: number;
     id: number;
 }
+
+export type BoardInvite = {
+    id: number;
+    board_id: number;
+    inviter_id: number;
+    invitee_email: string;
+    role: "member" | "admin";
+    token: string;
+    created_at: string;
+    expires_at: string;
+};

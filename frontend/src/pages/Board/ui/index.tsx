@@ -21,10 +21,9 @@ import {
     useBatchUpdateTasks,
     useCreateComment,
     useDeleteComment,
-    useUpdateComment,
 } from "@/features/boards/lib/hooks";
 import { socket } from "@/features/boards/lib/socket";
-import { BoardHeaderWithMembers } from "./BoardHeaderWithMembers";
+import BoardHeaderWithMembers from "./BoardHeaderWithMembers";
 import {
     Button,
     Dialog,
@@ -41,6 +40,7 @@ import AddListSection from "./AddListSection";
 import CommentCard from "./CommentCard";
 import AssigneesField from "./AssigneesField";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
+import type { User } from "@/features/auth/model/types";
 
 const Board = () => {
     const boardId = Number(useParams().id);
@@ -62,6 +62,7 @@ const Board = () => {
         null
     );
     const [newComment, setNewComment] = useState({ content: "" });
+    const [membersModalOpen, setMembersModalOpen] = useState(false);
 
     const [dragState, setDragState] = useState({
         draggingTask: null as Task | null,
@@ -71,12 +72,10 @@ const Board = () => {
         isOverEmptyList: false,
     });
 
-    const [listDragState, setListDragState] = useState<{
-        draggingListId: number | null;
-        targetListId: number | null;
-    }>({
-        draggingListId: null,
-        targetListId: null,
+    const [listDragState, setListDragState] = useState({
+        draggingList: null as ListWithTasks | null,
+        sourceIndex: null as number | null,
+        targetIndex: null as number | null,
     });
 
     const newListInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +98,7 @@ const Board = () => {
 
     const handleTaskDragStart = useCallback(
         (e: React.DragEvent<HTMLDivElement>, task: Task, listId: number) => {
+            e.stopPropagation();
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData(
                 "text/plain",
@@ -571,216 +571,260 @@ const Board = () => {
     };
 
     const handleListDragStart = useCallback(
-        (e: React.DragEvent<HTMLDivElement>, list: ListWithTasks) => {
+        (
+            e: React.DragEvent<HTMLDivElement>,
+            list: ListWithTasks,
+            index: number
+        ) => {
+            if (dragState.draggingTask) return;
             e.dataTransfer.effectAllowed = "move";
-            setListDragState((prev) => ({ ...prev, draggingListId: list.id }));
+            e.dataTransfer.setData(
+                "text/plain",
+                JSON.stringify({ listId: list.id })
+            );
+            setListDragState({
+                draggingList: list,
+                sourceIndex: index,
+                targetIndex: index,
+            });
         },
-        []
+        [dragState.draggingTask]
     );
 
     const handleListDragOver = useCallback(
-        (e: React.DragEvent<HTMLDivElement>, listId: number) => {
+        (e: React.DragEvent<HTMLDivElement>, hoverIndex: number) => {
+            if (dragState.draggingTask) return;
             e.preventDefault();
-            setListDragState((prev) => ({ ...prev, targetListId: listId }));
+            e.dataTransfer.dropEffect = "move";
+            setListDragState((prev) => ({ ...prev, targetIndex: hoverIndex }));
         },
-        []
+        [dragState.draggingTask]
     );
 
     const handleListDragLeave = useCallback(() => {
-        setListDragState((prev) => ({ ...prev, targetListId: null }));
+        setListDragState((prev) => ({ ...prev }));
     }, []);
 
     const handleListDrop = useCallback(
-        (e: React.DragEvent<HTMLDivElement>, targetListId: number) => {
+        (e: React.DragEvent<HTMLDivElement>) => {
+            if (dragState.draggingTask) return;
             e.preventDefault();
-            const { draggingListId } = listDragState;
-            if (draggingListId === null || draggingListId === targetListId)
-                return;
-
             setCurrentBoardData((prev) => {
-                if (!prev) return prev;
-
+                if (!prev || listDragState.draggingList == null) return prev;
                 const lists = [...prev.lists];
-                const dragIndex = lists.findIndex(
-                    (l) => l.id === draggingListId
-                );
-                const dropIndex = lists.findIndex((l) => l.id === targetListId);
-                if (dragIndex === -1 || dropIndex === -1) return prev;
+                const { sourceIndex, targetIndex } = listDragState;
+                if (
+                    sourceIndex == null ||
+                    targetIndex == null ||
+                    sourceIndex === targetIndex
+                )
+                    return prev;
 
-                const [removed] = lists.splice(dragIndex, 1);
-                lists.splice(dropIndex, 0, removed);
+                [lists[sourceIndex], lists[targetIndex]] = [
+                    lists[targetIndex],
+                    lists[sourceIndex],
+                ];
 
-                const updatedLists = lists.map((l, idx) => ({
+                const updated = lists.map((l, idx) => ({
                     ...l,
                     position: idx,
                 }));
 
-                updatedLists.forEach((list) => {
+                updated.forEach((l) =>
                     updateListMutation.mutate({
-                        id: list.id,
-                        position: list.position,
-                    });
-                });
+                        id: l.id,
+                        position: l.position,
+                    })
+                );
 
-                return { ...prev, lists: updatedLists };
+                return { ...prev, lists: updated };
             });
 
-            setListDragState({ draggingListId: null, targetListId: null });
+            setListDragState({
+                draggingList: null,
+                sourceIndex: null,
+                targetIndex: null,
+            });
         },
-        [listDragState, updateListMutation]
+        [listDragState, updateListMutation, dragState.draggingTask]
     );
 
     return (
         <div className="flex-1 bg-background p-4 md:p-6">
             <div className="max-w-full mx-auto">
+                {currentBoardData.board && (
+                    <div className="flex items-center justify-between mb-6">
+                        <h1 className="text-2xl font-bold">
+                            {currentBoardData.board.title}
+                        </h1>
+
+                        <Button
+                            variant="primary"
+                            onClick={() => setMembersModalOpen(true)}
+                            className="flex items-center gap-2"
+                        >
+                            <Plus className="w-4 h-4" />
+                            Members
+                        </Button>
+                    </div>
+                )}
+
                 {boardData?.board && (
                     <BoardHeaderWithMembers
-                        boardData={boardData.board}
-                        description="Organize your tasks and track progress"
-                        title={boardData.board.title}
+                        boardData={currentBoardData.board}
+                        members={currentBoardData.members as User[]}
+                        isOpen={membersModalOpen}
+                        onClose={() => setMembersModalOpen(false)}
                     />
                 )}
 
                 <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 min-h-[600px] mt-6">
                     <LayoutGroup>
-                        {currentBoardData.lists.map((list) => (
-                            <motion.div
-                                key={list.id}
-                                layout
-                                transition={{
-                                    type: "spring",
-                                    stiffness: 500,
-                                    damping: 40,
-                                }}
-                                style={{
-                                    opacity:
-                                        listDragState.draggingListId === list.id
-                                            ? 0.4
-                                            : 1,
-                                    scale:
-                                        listDragState.draggingListId === list.id
-                                            ? 1.05
-                                            : 1,
-                                }}
-                            >
-                                <div
-                                    key={list.id}
-                                    className={`flex-shrink-0 w-72 md:w-80 bg-card dark:bg-card rounded-xl shadow-lg border border-border transition-all duration-200 ${
-                                        dragState.targetListId === list.id &&
-                                        dragState.isOverEmptyList
+                        {currentBoardData.lists.map((list, index) => (
+                            <div key={list.id} className="flex-shrink-0">
+                                <motion.div
+                                    layout
+                                    className={`w-72 md:w-80 bg-card rounded-xl shadow-lg border ${
+                                        listDragState.targetIndex === index
                                             ? "ring-2 ring-primary-500"
                                             : ""
                                     }`}
-                                    onDrop={(e) =>
-                                        handleTaskDrop(e, list.id, -1)
-                                    }
-                                    onDragOver={(e) =>
-                                        handleTaskDragOver(e, list.id, -1)
-                                    }
-                                    onDragLeave={handleTaskDragLeave}
-                                >
-                                    <ListHeader
-                                        list={list}
-                                        editingList={editingList}
-                                        setEditingList={setEditingList}
-                                        handleUpdateList={handleUpdateList}
-                                        handleDeleteList={handleDeleteList}
-                                        editListInputRef={editListInputRef}
-                                        onDragStart={handleListDragStart}
-                                        onDragOver={handleListDragOver}
-                                        onDragLeave={handleListDragLeave}
-                                        onDrop={handleListDrop}
-                                        isDraggingOver={
-                                            listDragState.targetListId ===
+                                    style={{
+                                        opacity:
+                                            listDragState.draggingList?.id ===
                                             list.id
-                                        }
-                                    />
-
-                                    <div className="p-2 space-y-2">
-                                        <AnimatePresence>
-                                            {list.tasks
-                                                .sort(
-                                                    (a, b) =>
-                                                        a.position - b.position
+                                                ? 0.4
+                                                : 1,
+                                        transform: `scale(${
+                                            listDragState.draggingList?.id ===
+                                            list.id
+                                                ? 1.05
+                                                : 1
+                                        })`,
+                                    }}
+                                >
+                                    <div className="flex-shrink-0 w-72 md:w-80 bg-card dark:bg-card rounded-xl shadow-lg border border-border transition-all duration-200">
+                                        <ListHeader
+                                            list={list}
+                                            editingList={editingList}
+                                            setEditingList={setEditingList}
+                                            handleUpdateList={handleUpdateList}
+                                            handleDeleteList={handleDeleteList}
+                                            editListInputRef={editListInputRef}
+                                            onDragStart={(e) =>
+                                                handleListDragStart(
+                                                    e,
+                                                    list,
+                                                    index
                                                 )
-                                                .map((task) => (
-                                                    <div
-                                                        key={task.id}
-                                                        className="relative"
-                                                    >
-                                                        <motion.div
-                                                            key={task.id}
-                                                            layoutId={`task-${task.id}`}
-                                                            layout
-                                                            transition={{
-                                                                type: "spring",
-                                                                stiffness: 500,
-                                                                damping: 40,
-                                                            }}
-                                                            style={{
-                                                                opacity:
-                                                                    dragState
-                                                                        .draggingTask
-                                                                        ?.id ===
-                                                                    task.id
-                                                                        ? 0.4
-                                                                        : 1,
-                                                                scale:
-                                                                    dragState
-                                                                        .draggingTask
-                                                                        ?.id ===
-                                                                    task.id
-                                                                        ? 1.05
-                                                                        : 1,
-                                                            }}
-                                                        >
-                                                            <TaskItem
-                                                                task={task}
-                                                                listId={list.id}
-                                                                handleDeleteTask={
-                                                                    handleDeleteTask
-                                                                }
-                                                                handleDragStart={
-                                                                    handleTaskDragStart
-                                                                }
-                                                                handleDragOver={
-                                                                    handleTaskDragOver
-                                                                }
-                                                                handleDragLeave={
-                                                                    handleTaskDragLeave
-                                                                }
-                                                                handleDrop={
-                                                                    handleTaskDrop
-                                                                }
-                                                                isDragged={
-                                                                    dragState
-                                                                        .draggingTask
-                                                                        ?.id ===
-                                                                    task.id
-                                                                }
-                                                                setTargetTask={
-                                                                    setTargetTask
-                                                                }
-                                                            />
-                                                        </motion.div>
-                                                    </div>
-                                                ))}
-                                        </AnimatePresence>
-                                    </div>
-
-                                    <div className="p-3 border-t border-border bg-muted dark:bg-muted rounded-b-xl">
-                                        <AddTaskForm
-                                            listId={list.id}
-                                            addingTaskToList={addingTaskToList}
-                                            setAddingTaskToList={
-                                                setAddingTaskToList
                                             }
-                                            handleAddTask={handleAddTask}
-                                            newTaskInputRef={newTaskInputRef}
+                                            onDragOver={(e) =>
+                                                handleListDragOver(e, index)
+                                            }
+                                            onDragLeave={handleListDragLeave}
+                                            onDrop={handleListDrop}
+                                            isDraggingOver={
+                                                listDragState.targetIndex ===
+                                                index
+                                            }
+                                            index={index}
                                         />
+
+                                        {/* tasks area (unchanged) */}
+                                        <div className="p-2 space-y-2">
+                                            <AnimatePresence>
+                                                {list.tasks
+                                                    .sort(
+                                                        (a, b) =>
+                                                            a.position -
+                                                            b.position
+                                                    )
+                                                    .map((task) => (
+                                                        <div
+                                                            key={task.id}
+                                                            className="relative"
+                                                        >
+                                                            <motion.div
+                                                                key={task.id}
+                                                                layoutId={`task-${task.id}`}
+                                                                layout
+                                                                transition={{
+                                                                    type: "spring",
+                                                                    stiffness: 500,
+                                                                    damping: 40,
+                                                                }}
+                                                                style={{
+                                                                    opacity:
+                                                                        dragState
+                                                                            .draggingTask
+                                                                            ?.id ===
+                                                                        task.id
+                                                                            ? 0.4
+                                                                            : 1,
+                                                                    transform: `scale(${
+                                                                        dragState
+                                                                            .draggingTask
+                                                                            ?.id ===
+                                                                        task.id
+                                                                            ? 1.05
+                                                                            : 1
+                                                                    })`,
+                                                                }}
+                                                            >
+                                                                <TaskItem
+                                                                    task={task}
+                                                                    listId={
+                                                                        list.id
+                                                                    }
+                                                                    handleDeleteTask={
+                                                                        handleDeleteTask
+                                                                    }
+                                                                    handleDragStart={
+                                                                        handleTaskDragStart
+                                                                    }
+                                                                    handleDragOver={
+                                                                        handleTaskDragOver
+                                                                    }
+                                                                    handleDragLeave={
+                                                                        handleTaskDragLeave
+                                                                    }
+                                                                    handleDrop={
+                                                                        handleTaskDrop
+                                                                    }
+                                                                    isDragged={
+                                                                        dragState
+                                                                            .draggingTask
+                                                                            ?.id ===
+                                                                        task.id
+                                                                    }
+                                                                    setTargetTask={
+                                                                        setTargetTask
+                                                                    }
+                                                                />
+                                                            </motion.div>
+                                                        </div>
+                                                    ))}
+                                            </AnimatePresence>
+                                        </div>
+
+                                        <div className="p-3 border-t border-border bg-muted dark:bg-muted rounded-b-xl">
+                                            <AddTaskForm
+                                                listId={list.id}
+                                                addingTaskToList={
+                                                    addingTaskToList
+                                                }
+                                                setAddingTaskToList={
+                                                    setAddingTaskToList
+                                                }
+                                                handleAddTask={handleAddTask}
+                                                newTaskInputRef={
+                                                    newTaskInputRef
+                                                }
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </motion.div>
+                                </motion.div>
+                            </div>
                         ))}
                     </LayoutGroup>
 

@@ -1,11 +1,11 @@
 // hooks.ts
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import type { ListRequest, Task, TaskRequest } from "../model/types";
 import { queryClient } from "@/app/providers/QueryProvider/query/queryClient";
 
 const apiClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
+    baseURL: import.meta.env.VITE_API_URL || "",
     withCredentials: true,
 });
 
@@ -228,6 +228,60 @@ export const useDeleteComment = () => {
         onSuccess: (_, commentId) => {
             queryClient.invalidateQueries({ queryKey: ["comments"] });
             queryClient.invalidateQueries({ queryKey: ["comment", commentId] });
+        },
+    });
+};
+
+export const useAcceptInvite = (token?: string | null) => {
+    return useQuery({
+        queryKey: ["accept-invite", token],
+        queryFn: async () => {
+            if (!token) return null;
+            const res = await axios.get(
+                `${
+                    import.meta.env.VITE_API_URL || ""
+                }/api/board-invites/accept-invite?token=${token}`,
+                {
+                    withCredentials: true,
+                }
+            );
+            return res.data;
+        },
+        enabled: !!token,
+    });
+};
+export const useGetCurrentInvites = (boardId?: number) => {
+    return useQuery({
+        queryKey: ["current-invites", boardId],
+        queryFn: async () => {
+            try {
+                const response = await apiClient.get(
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/board-invites/current-invites/${boardId}`
+                );
+                return response.data;
+            } catch (error) {
+                handleApiError(error, "Failed to get invites");
+            }
+        },
+        enabled: !!boardId,
+    });
+};
+
+export const useCancelInvite = () => {
+    return useMutation({
+        mutationFn: async (inviteId: number) => {
+            try {
+                const response = await apiClient.delete(
+                    `${
+                        import.meta.env.VITE_API_URL || ""
+                    }/api/board-invites/cancel-invite/${inviteId}`
+                );
+                return response.data;
+            } catch (error) {
+                handleApiError(error, "Failed to cancel invite");
+            }
         },
     });
 };

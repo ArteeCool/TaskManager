@@ -42,7 +42,7 @@ export const sendInvite = async (req: MutatedRequest, res: Response) => {
         const inviteeId = inviteeRes?.rows[0]?.id;
         if (inviteeId) {
             const existsRes = await queryDB(
-                "SELECT 1 FROM board_users WHERE user_id=$1 AND board_id=$2",
+                "SELECT 1 FROM board_users WHERE user_id=$1 AND board_id=$2 AND role IN ('owner','admin')",
                 [inviteeId, boardId]
             );
             if (existsRes?.rows.length) {
@@ -82,6 +82,33 @@ export const sendInvite = async (req: MutatedRequest, res: Response) => {
         );
 
         res.status(200).json({ message: "Invite sent" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const getCurrentBoardInvites = async (
+    req: MutatedRequest,
+    res: Response
+) => {
+    const userId = req.user?.id;
+    const boardId = Number(req.params.id);
+
+    try {
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+        const check = await queryDB(
+            "SELECT 1 FROM board_users WHERE user_id=$1 AND board_id=$2",
+            [userId, boardId]
+        );
+        if (!check?.rows.length)
+            return res.status(403).json({ message: "Not your board" });
+
+        const result = await queryDB(
+            `SELECT * FROM board_invitations WHERE board_id=$1 AND expires_at > now()`,
+            [boardId]
+        );
+        res.status(200).json(result?.rows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Internal server error" });
@@ -138,6 +165,40 @@ export const acceptInvite = async (req: MutatedRequest, res: Response) => {
             boardId: invitation.board_id,
             role: invitation.role,
         });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
+export const cancelInvite = async (req: MutatedRequest, res: Response) => {
+    const userId = req.user?.id;
+    const token = req.params.token;
+
+    try {
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+        const invitesResponse = await queryDB(
+            `SELECT * FROM board_invitations WHERE token=$1`,
+            [token]
+        );
+
+        if (!invitesResponse?.rows.length) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+
+        const invitation = invitesResponse.rows[0];
+        const boardId = invitation.board_id;
+        const check = await queryDB(
+            "SELECT 1 FROM board_users WHERE user_id=$1 AND board_id=$2",
+            [userId, boardId]
+        );
+        if (!check?.rows.length)
+            return res.status(403).json({ message: "Not your board" });
+
+        await queryDB("DELETE FROM board_invitations WHERE token=$1", [token]);
+
+        res.status(200).json({ message: "Invitation cancelled" });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Internal server error" });

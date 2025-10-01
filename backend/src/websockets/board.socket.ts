@@ -13,17 +13,21 @@ export const initSocket = (server: any) => {
     io.on("connection", (socket) => {
         console.log("User connected:", socket.id);
 
-        io.on("error", (err) => {
-            console.error("Unexpected PG error", err);
-        });
-
         socket.on("joinBoard", (boardId) => {
             socket.join(`board_${boardId}`);
         });
 
-        socket.on("disconnect", () => {
-            console.log("User disconnected:", socket.id);
+        socket.on("disconnect", (reason) => {
+            console.log(`User disconnected: ${socket.id} (${reason})`);
         });
+
+        socket.on("error", (err) => {
+            console.error(`Socket error from ${socket.id}:`, err);
+        });
+    });
+
+    io.on("error", (err) => {
+        console.error("Socket.IO server error:", err);
     });
 
     return io;

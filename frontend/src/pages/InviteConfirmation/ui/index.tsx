@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { useLoader } from "@/features/loader/lib/useLoader";
-import { useAcceptInvite } from "@/features/boards/lib/useAcceptInvite";
+import { useAcceptInvite } from "@/features/boards/lib/hooks";
 
 const InviteConfirmation = () => {
     const [searchParams] = useSearchParams();

@@ -13,6 +13,7 @@ const ListHeader = ({
     onDragLeave,
     onDrop,
     isDraggingOver,
+    index,
 }: {
     list: ListWithTasks;
     editingList: number | null;
@@ -22,12 +23,14 @@ const ListHeader = ({
     editListInputRef: React.RefObject<HTMLInputElement | null>;
     onDragStart: (
         e: React.DragEvent<HTMLDivElement>,
-        list: ListWithTasks
+        list: ListWithTasks,
+        index: number
     ) => void;
     onDragOver: (e: React.DragEvent<HTMLDivElement>, listId: number) => void;
     onDragLeave: () => void;
     onDrop: (e: React.DragEvent<HTMLDivElement>, listId: number) => void;
     isDraggingOver: boolean;
+    index: number;
 }) => {
     return (
         <div
@@ -37,7 +40,7 @@ const ListHeader = ({
                     : ""
             }`}
             draggable
-            onDragStart={(e) => onDragStart(e, list)}
+            onDragStart={(e) => onDragStart(e, list, index)}
             onDragOver={(e) => onDragOver(e, list.id)}
             onDragLeave={onDragLeave}
             onDrop={(e) => onDrop(e, list.id)}
