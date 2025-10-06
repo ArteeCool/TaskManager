@@ -730,8 +730,20 @@ const Board = () => {
                                             index={index}
                                         />
 
-                                        {/* tasks area (unchanged) */}
-                                        <div className="p-2 space-y-2">
+                                        <div
+                                            className="p-2 space-y-2 min-h-[75px]"
+                                            onDragOver={(e) =>
+                                                handleTaskDragOver(
+                                                    e,
+                                                    list.id,
+                                                    -1
+                                                )
+                                            }
+                                            onDragLeave={handleTaskDragLeave}
+                                            onDrop={(e) =>
+                                                handleTaskDrop(e, list.id, -1)
+                                            }
+                                        >
                                             <AnimatePresence>
                                                 {list.tasks
                                                     .sort(
