@@ -2,7 +2,7 @@ import { type Response } from "express";
 import { type MutatedRequest } from "../types/auth.types.ts";
 import crypto from "crypto";
 import { queryDB } from "../database/db.ts";
-import { sendEmail } from "../controllers/email.controller.ts";
+import { sendEmail } from "../utils/email.ts";
 
 export const sendInvite = async (req: MutatedRequest, res: Response) => {
     try {

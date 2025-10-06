@@ -5,7 +5,7 @@ import { queryDB } from "../database/db.ts";
 import { type Request, type Response } from "express";
 import { generateRandomString } from "../utils/index.ts";
 import { type MutatedRequest } from "../types/auth.types.ts";
-import { sendEmail } from "./email.controller.ts";
+import { sendEmail } from "../utils/email.ts";
 
 export const signUp = async (req: Request, res: Response) => {
     const { fullname, email, password } = req.body;
