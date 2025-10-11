@@ -5,7 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     avatarurl TEXT NOT NULL,
     roles TEXT[] NOT NULL,
-    confirmation_key TEXT UNIQUE
+    confirmation_key TEXT UNIQUE,
+	reset_password_token TEXT UNIQUE,
+	reset_password_expires TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS boards (
